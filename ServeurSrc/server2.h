@@ -5,7 +5,7 @@
 
 #include <winsock2.h>
 
-#elif defined (linux)
+#else
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -20,10 +20,6 @@ typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
-
-#else
-
-#error not defined for this platform
 
 #endif
 
