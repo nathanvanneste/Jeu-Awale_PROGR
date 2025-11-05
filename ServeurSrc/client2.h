@@ -10,7 +10,11 @@ typedef enum {
    ETAT_CHOOSE_PLAYER,    // vaut 2
    ETAT_LOOK_PLAYER,
    ETAT_CHOOSE_DEFI,
-   ETAT_ANSWER_DEFI
+   ETAT_ANSWER_DEFI,
+   ETAT_CHOOSE_PARTIE,
+   ETAT_PARTIE_EN_COURS,
+   ETAT_SEND_MESSAGE,
+   ETAT_READ_MESSAGES
 } Etat;
 
 typedef struct Client Client;
@@ -28,6 +32,13 @@ typedef struct Partie
    char ** observers;
 }Partie;
 
+typedef struct
+{
+   char * expediteur;
+   char * destinataire;
+   char * contenu;
+}Message;
+
 typedef struct Client
 {
    SOCKET sock;
@@ -38,13 +49,10 @@ typedef struct Client
    int indiceParties;
    Client * defisReceive[1024];
    int indiceDefis;
+
+   Message *messages[256];
+   int nbMessages;
 }Client;
 
-typedef struct
-{
-   char * expediteur;
-   char * destinataire;
-   char * contenu;
-}Message;
 
 #endif /* guard */

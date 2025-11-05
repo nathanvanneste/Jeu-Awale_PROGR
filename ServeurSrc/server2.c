@@ -103,6 +103,7 @@ static void app(void)
          c.etat_courant = ETAT_INIT;
          c.indiceDefis = 0;
          c.indiceParties = 0;
+         c.nbMessages = 0;
          clients[actual] = c;
          
          
@@ -254,9 +255,11 @@ static void send_menu_to_client(Client * c)
    // Définir un état menu à envoyer au client, ou bien le garder côté serveur ?
    const char * menu = 
    "== MENU ==\n"
-   "1 - Consulter la liste des joureurs\n"
+   "1 - Consulter la liste des joueurs\n"
    "2 - Consulter ma liste de défis\n"
-   "3 - Quitter\n";
+   "3 - Consulter mes parties\n"
+   "4 - Consulter mes messages\n"
+   "5 - Quitter\n";
 
    write_client(c->sock, menu);
 }
@@ -286,12 +289,76 @@ static void send_all_players_to_client(Client * c, int nbClient, Client clients[
       write_client(c->sock, "Il n'y a aucun autre joueur connecté ! Retour au menu. \n");
       send_menu_to_client(c);
    } else {
-      write_client("Voici tous les joueurs connectés, rentrez un pseudo pour plus de détail :\n");
+      write_client(c->sock, "Voici tous les joueurs connectés, rentrez un pseudo pour plus de détail :\n");
       write_client(c->sock, chaine);
       c->etat_courant = ETAT_CHOOSE_PLAYER;
    }
    free(chaine);
 }
+
+static void send_all_parties_to_client(Client *c) {
+   if (c->indiceParties == 0) {
+      write_client(c->sock, "Vous n'avez aucune partie en cours. Retour au menu.\n");
+      send_menu_to_client(c);
+      return;
+   }
+
+   // Comptons les parties
+   int nbParties = c->indiceParties;
+   printf("Il y a %d parties \n", c->indiceParties);
+
+   char buffer[BUF_SIZE * 2] = "";
+   strcat(buffer, "== Vos parties en cours ==\n");
+
+   for (int i = 0; i < nbParties; ++i) {
+      Partie *p = c->parties[i];
+      if (!p) {
+         fprintf(stderr, "Erreur: partie %d NULL\n", i);
+         continue;
+      }
+      if (!p->joueur1 || !p->joueur2) {
+         fprintf(stderr, "Erreur: joueur1 ou joueur2 NULL pour partie %d\n", i);
+         continue;
+      }
+
+      Client *adv = (strcmp(p->joueur1->name, c->name) == 0) ? p->joueur2 : p->joueur1;
+      if (!adv) {
+         fprintf(stderr, "Erreur: adversaire NULL pour partie %d\n", i);
+         continue;
+      }
+
+      char ligne[BUF_SIZE];
+      snprintf(ligne, sizeof(ligne), "%d - Contre %s\n", i + 1, adv->name);
+      strcat(buffer, ligne);
+   }
+
+
+   strcat(buffer, "\nChoisissez le numéro de la partie à reprendre :\n");
+   write_client(c->sock, buffer);
+
+   c->etat_courant = ETAT_CHOOSE_PARTIE;
+}
+
+static void do_choose_partie(Client *c, char *choice) {
+    int num = atoi(choice);
+    if (num <= 0 || c->indiceParties == 0) {
+        write_client(c->sock, "Numéro invalide, réessayez.\n");
+        send_all_parties_to_client(c);
+        return;
+    }
+
+    Partie *p = c->parties[num - 1];
+    c->etat_courant = ETAT_PARTIE_EN_COURS;
+
+    char msg[BUF_SIZE];
+    Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
+    snprintf(msg, sizeof(msg), "Vous jouez contre %s !\nC’est votre tour si c’est votre camp.\n", adv->name);
+    write_client(c->sock, msg);
+
+    // Appel à une fonction d’affichage de plateau
+   // afficher_plateau(c, p);
+}
+
 
 static void send_all_defis_to_client(Client * c)
 {
@@ -389,6 +456,18 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
       case ETAT_ANSWER_DEFI:
          do_answer_defi(c, choice);
          break;
+      case ETAT_CHOOSE_PARTIE:
+         do_choose_partie(c, choice);
+         break;
+      case ETAT_PARTIE_EN_COURS:
+         // Ici tu géreras plus tard le jeu tour par tour
+         write_client(c->sock, "Le jeu n'est pas encore implémenté. Retour au menu.\n");
+         send_menu_to_client(c);
+         break;
+      case ETAT_SEND_MESSAGE:
+         do_send_message(c, choice);
+         break;
+
       default:
          printf("default");
          break;
@@ -451,14 +530,7 @@ static void do_answer_defi(Client *c, char *choice) {
             return;
         }
 
-        // Enregistre la partie pour chaque joueur (simple tableau ici)
-        Partie * p = malloc(sizeof(Partie));
-        if (!p) {
-            write_client(c->sock, "Erreur mémoire lors de la création de la partie.\n");
-            send_menu_to_client(c);
-            return;
-        }
-        init_partie(p, c, c->lookedPlayer);
+        init_partie(c, c->lookedPlayer, p);
         // TODO : gérer les parties.
         //c->parties = malloc(sizeof(Partie*));
         //c->parties[0] = p;
@@ -528,8 +600,10 @@ static void do_choose_defis(Client * c, char * choice) {
 static void init_partie(Client * c1, Client * c2, Partie * p) {
    if (rand() % 2 == 1) {
       p->joueur1 = c1;
-   } else {
       p->joueur2 = c2;
+   } else {
+      p->joueur2 = c1;
+      p->joueur1 = c2;
    }
    //Changer pour un enum avec : demandee, en cours, finie
    p->partieEnCours = false;
@@ -585,9 +659,62 @@ c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
          c->lookedPlayer = NULL;
          send_menu_to_client(c);
          break;
+         case 2 : 
+            
+            write_client(c->sock, "✉️ Entrez le message à envoyer :\n");
+            c->etat_courant = ETAT_SEND_MESSAGE;
+            break;
       default :
+         break;
    }
 }
+
+static void do_send_message(Client *c, char *choice) {
+    if (!c->lookedPlayer) {
+        write_client(c->sock, "Erreur : aucun joueur sélectionné.\n");
+        send_menu_to_client(c);
+        return;
+    }
+
+    // Création du message
+    Message *m = malloc(sizeof(Message));
+    m->expediteur = strdup(c->name);
+    m->destinataire = strdup(c->lookedPlayer->name);
+    m->contenu = strdup(choice);
+
+    Client *dest = c->lookedPlayer;
+    dest->messages[dest->nbMessages++] = m;
+
+    // Envoi immédiat au destinataire (si on veut un effet "live")
+    char buf[BUF_SIZE * 2];
+    snprintf(buf, sizeof(buf), "Nouveau message de %s : %s\n", c->name, choice);
+    write_client(dest->sock, buf);
+
+    write_client(c->sock, "Message envoyé avec succès ! Retour au menu.\n");
+    send_menu_to_client(c);
+}
+
+static void send_all_messages_to_client(Client *c) {
+    if (c->nbMessages == 0) {
+        write_client(c->sock, "📭 Aucun message reçu.\n");
+        send_menu_to_client(c);
+        return;
+    }
+
+    char buffer[BUF_SIZE * 4] = "== Vos messages ==\n";
+    for (int i = 0; i < c->nbMessages; ++i) {
+        Message *m = c->messages[i];
+        char ligne[BUF_SIZE];
+        snprintf(ligne, sizeof(ligne), "De %s : %s\n", m->expediteur, m->contenu);
+        strcat(buffer, ligne);
+    }
+
+    write_client(c->sock, buffer);
+    c->etat_courant = ETAT_READ_MESSAGES;
+
+    // TODO : que faire ensuite ? Proposer la possibilité de répondre ? Supprimer un message ? Retour au menu ?
+}
+
 
 static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Je suis dans do_menu");
@@ -600,7 +727,19 @@ static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
       case 2 :
          send_all_defis_to_client(c);
          break;
-      default :
+      case 3:
+         send_all_parties_to_client(c);
+         break;
+      case 4: send_all_messages_to_client(c); break;
+      case 5:
+      // TODO, enlever de la liste etc... Ou passer en mode disconnect ?
+         write_client(c->sock, "Au revoir !\n");
+         closesocket(c->sock);
+         break;
+      default:
+         write_client(c->sock, "Choix invalide. Merci de réessayer.\n");
+         send_menu_to_client(c);
+         break;
    }
 }
 

@@ -53,6 +53,8 @@ static void do_look_player(Client * c, char * choice);
 static void do_choose_defis(Client * c, char * choice);
 static void do_answer_defi(Client *c, char *choice);
 
+static void do_send_message(Client *c, char *choice);
+
 static void init_partie(Client * c1, Client * c2, Partie * p);
 
 typedef struct
