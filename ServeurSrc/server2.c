@@ -101,7 +101,10 @@ static void app(void)
          c.sock = csock;
          strncpy(c.name, buffer, BUF_SIZE - 1);
          c.etat_courant = ETAT_INIT;
+         c.indiceDefis = 0;
+         c.indiceParties = 0;
          clients[actual] = c;
+         
          
          
          send_menu_to_client(&clients[actual]);
@@ -250,7 +253,10 @@ static void send_menu_to_client(Client * c)
    c->etat_courant = ETAT_MENU;
    // Définir un état menu à envoyer au client, ou bien le garder côté serveur ?
    const char * menu = 
-   "== MENU ==\n 1 - Consulter la liste des joureurs\n 2 - Quitter\n";
+   "== MENU ==\n"
+   "1 - Consulter la liste des joureurs\n"
+   "2 - Consulter ma liste de défis\n"
+   "3 - Quitter\n";
 
    write_client(c->sock, menu);
 }
@@ -280,9 +286,54 @@ static void send_all_players_to_client(Client * c, int nbClient, Client clients[
       write_client(c->sock, "Il n'y a aucun autre joueur connecté ! Retour au menu. \n");
       send_menu_to_client(c);
    } else {
+      write_client("Voici tous les joueurs connectés, rentrez un pseudo pour plus de détail :\n");
       write_client(c->sock, chaine);
       c->etat_courant = ETAT_CHOOSE_PLAYER;
    }
+   free(chaine);
+}
+
+static void send_all_defis_to_client(Client * c)
+{
+   // Il faut envoyer la liste des joueurs en sachant que le client peut choisir d'en défier un parmi cette liste
+   
+   if (c->indiceDefis == 0) {
+      write_client(c->sock, "Vous n'avez reçu aucun défi ! Retour au menu. \n");
+      send_menu_to_client(c);
+      return;
+   }
+
+   size_t taille_totale = 0;
+
+   for (int i = 0; i < c->indiceDefis ; i++) {
+      taille_totale += strlen(c->defisReceive[i]->name) + 1; // +1 pour \n ou le '\0'
+   }
+
+   char *chaine = calloc(taille_totale, sizeof(char));
+   char *p = chaine;
+
+   if (!chaine) {
+      // erreur d'allocation : prévenir le client et sortir
+      write_client(c->sock, "Erreur serveur : mémoire insuffisante.\n");
+      send_menu_to_client(c);
+      return;
+   }
+
+   for (int i = 0; i < c->indiceDefis; ++i) {
+      Client *dc = c->defisReceive[i];
+      if (!dc || dc->name[0] == '\0') continue;
+      size_t len = snprintf(p, taille_totale + 1 - (p - chaine), "%s", dc->name);
+      p += len;
+      // ajout d'un saut de ligne sauf pour le dernier
+      if (i < c->indiceDefis - 1) {
+         *p++ = '\n';
+      }
+   }
+   *p = '\0'; // Terminer
+   write_client(c->sock, "Voici tous les joueurs vous ayant proposé un défi, rentrez un pseudo pour l'accepter ou refuser.\n");
+   write_client(c->sock, chaine);
+   c->etat_courant = ETAT_CHOOSE_DEFI;
+   
    free(chaine);
 }
 
@@ -329,6 +380,15 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
          do_choose_player(c, choice, nbClient, clients);
          
          break;
+      case ETAT_LOOK_PLAYER :
+         do_look_player(c, choice);
+         break;
+      case ETAT_CHOOSE_DEFI:
+         do_choose_defis(c, choice);
+         break;
+      case ETAT_ANSWER_DEFI:
+         do_answer_defi(c, choice);
+         break;
       default:
          printf("default");
          break;
@@ -336,22 +396,35 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
    printf("END DO ACTION \n");
 }
 
-static void send_look_players_to_client(Client * c, Client clientLooked) {
+static void send_look_players_to_client(Client *c, Client clientLooked) {
    c->etat_courant = ETAT_LOOK_PLAYER;
 
-   // TODO : gérer le pseudo.
-   const char * toSend = "Que voulez-vous faire avec PSEUDO ?\n 1 - Le défier\n 2 - Envoyer un message\n";
+   const char *template =
+      "Que voulez-vous faire avec %s ?\n"
+      " 1 - Le défier\n"
+      " 2 - Envoyer un message\n"
+      " 3 - Retour au menu\n";
 
+   // calcul de la taille nécessaire (+1 pour le '\0')
+   size_t taille = snprintf(NULL, 0, template, clientLooked.name) + 1;
+   char *message = malloc(taille);
+   if (!message) {
+      return;
+   }
 
-   write_client(c->sock, toSend);
+   snprintf(message, taille, template, clientLooked.name);
+
+   write_client(c->sock, message);
+   free(message);
 }
 
-static void do_choose_player(Client * c, char * choice, int nbClient, Client clients[]) {
+static void do_choose_player(Client * c, char * choice, int nbClient, Client * clients) {
    // Ici client a challengé choice
    for (int i = 0 ; i < nbClient ; ++i) {
       if (strcmp(clients[i].name, choice) == 0) {
          // C'est lui qu'on challenge
          // On passe en état LOOK_PLAYER
+         c->lookedPlayer = &clients[i];
          send_look_players_to_client(c, clients[i]);
          return;
       }
@@ -362,13 +435,170 @@ static void do_choose_player(Client * c, char * choice, int nbClient, Client cli
    send_all_players_to_client(c, nbClient, clients);
 }
 
-static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
-   printf("Je suis dans do_menu");
+static void do_answer_defi(Client *c, char *choice) {
+    if (!c->lookedPlayer) {
+        write_client(c->sock, "Erreur : aucun défi sélectionné.\n");
+        send_menu_to_client(c);
+        return;
+    }
+
+    if (strcasecmp(choice, "oui") == 0) {
+        // Création d’une partie
+        Partie *p = malloc(sizeof(Partie));
+        if (!p) {
+            write_client(c->sock, "Erreur mémoire lors de la création de la partie.\n");
+            send_menu_to_client(c);
+            return;
+        }
+
+        // Enregistre la partie pour chaque joueur (simple tableau ici)
+        Partie * p = malloc(sizeof(Partie));
+        if (!p) {
+            write_client(c->sock, "Erreur mémoire lors de la création de la partie.\n");
+            send_menu_to_client(c);
+            return;
+        }
+        init_partie(p, c, c->lookedPlayer);
+        // TODO : gérer les parties.
+        //c->parties = malloc(sizeof(Partie*));
+        //c->parties[0] = p;
+        c->parties[c->indiceParties++] = p;
+        //c->lookedPlayer->parties = malloc(sizeof(Partie*));
+        //c->lookedPlayer->parties[0] = p;
+        c->lookedPlayer->parties[c->lookedPlayer->indiceParties++] = p;
+
+         // Message de confirmation
+        char msg[BUF_SIZE];
+        snprintf(msg, sizeof(msg), "Vous avez accepté le défi de %s ! La partie commence.\n", c->lookedPlayer->name);
+        write_client(c->sock, msg);
+
+        snprintf(msg, sizeof(msg), "%s a accepté votre défi ! La partie commence.\n", c->name);
+        write_client(c->lookedPlayer->sock, msg);
+
+        // Nettoyage du défi
+        c->lookedPlayer = NULL;
+        c->etat_courant = ETAT_MENU;
+        send_menu_to_client(c);
+
+    } else if (strcasecmp(choice, "non") == 0) {
+        // Défi refusé
+        char msg[BUF_SIZE];
+        snprintf(msg, sizeof(msg), "Vous avez refusé le défi de %s.\n", c->lookedPlayer->name);
+        write_client(c->sock, msg);
+
+        snprintf(msg, sizeof(msg), "%s a refusé votre défi.\n", c->name);
+        write_client(c->lookedPlayer->sock, msg);
+
+        // Supprimer le défi de la liste
+        for (int i = 0; i < c->indiceDefis; ++i) {
+            if (c->defisReceive[i] == c->lookedPlayer) {
+                memmove(&c->defisReceive[i], &c->defisReceive[i + 1],
+                        (c->indiceDefis - i - 1) * sizeof(Client*));
+                c->indiceDefis--;
+                break;
+            }
+        }
+
+        c->lookedPlayer = NULL;
+        send_menu_to_client(c);
+    } else {
+        write_client(c->sock, "Réponse invalide. Tapez 'oui' ou 'non'.\n");
+    }
+}
+
+
+static void do_choose_defis(Client * c, char * choice) {
+   for (int i = 0 ; i < c->indiceDefis ; ++i) {
+      if (strcmp(c->defisReceive[i]->name, choice) == 0) {
+         c->lookedPlayer = c->defisReceive[i];
+         c->etat_courant = ETAT_ANSWER_DEFI;
+
+         char msg[BUF_SIZE];
+         snprintf(msg, sizeof(msg), "%s vous a défié ! Voulez-vous accepter ? (oui/non)\n", c->lookedPlayer->name);
+         write_client(c->sock, msg);
+         return;
+      }
+   }
+
+   write_client(c->sock, "Le pseudo ne correspond pas à un joueur, merci de réessayer !\n");
+   send_all_defis_to_client(c);
+}
+
+
+static void init_partie(Client * c1, Client * c2, Partie * p) {
+   if (rand() % 2 == 1) {
+      p->joueur1 = c1;
+   } else {
+      p->joueur2 = c2;
+   }
+   //Changer pour un enum avec : demandee, en cours, finie
+   p->partieEnCours = false;
+
+   p->cptJoueur1 = 0;
+   p->cptJoueur2 = 0;
+}
+
+static void do_look_player(Client * c, char * choice) {
+   printf("Je suis dans do_look_player");
    int num = atoi(choice);
    // TODO : Controler la valeur du choice;
    switch (num) {
       case 1 :
+         printf("On va défier %s\n", c->lookedPlayer->name);
+
+         // TODO, gérer le fait de recevoir un défi.
+
+         const char *template = "Défi envoyé à %s !\n";
+
+         // calcul de la taille nécessaire (+1 pour le '\0')
+         size_t taille = snprintf(NULL, 0, template, c->lookedPlayer->name) + 1;
+         char *message = malloc(taille);
+         if (!message) {
+            return;
+         }
+
+   snprintf(message, taille, template, c->lookedPlayer->name);
+
+   write_client(c->sock, message);
+
+   const char * template2 = "%s vous a envoyé un défi !\n";
+
+   // calcul de la taille nécessaire (+1 pour le '\0')
+   size_t taille2 = snprintf(NULL, 0, template2, c->name) + 1;
+   char *message2 = malloc(taille);
+   if (!message2) {
+      return;
+   }
+
+   snprintf(message2, taille2, template2, c->name);
+
+   write_client(c->lookedPlayer->sock, message2);
+
+// On l'ajoute au défi
+c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
+
+         write_client(c->sock, "Défi envoyé ! Retour au menu.");
+
+         // TODO : Rentrer un nom puis accepter / refuser.
+
+
+         c->lookedPlayer = NULL;
+         send_menu_to_client(c);
+         break;
+      default :
+   }
+}
+
+static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
+   printf("Je suis dans do_menu");
+   int num = atoi(choice);
+   // TODO : Controler la valeur du choice;🤣
+   switch (num) {
+      case 1 :
          send_all_players_to_client(c, nbClient, clients);
+         break;
+      case 2 :
+         send_all_defis_to_client(c);
          break;
       default :
    }

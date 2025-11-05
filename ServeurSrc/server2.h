@@ -41,11 +41,19 @@ static void write_client(SOCKET sock, const char *buffer);
 static void send_message_to_all_clients(Client *clients, Client client, int actual, const char *buffer, char from_server);
 static void remove_client(Client *clients, int to_remove, int *actual);
 static void clear_clients(Client *clients, int actual);
+
 static void send_menu_to_client(Client * c);
+static void send_all_defis_to_client(Client * c);
 
 static void do_action(Client * c, char * choice, int nbClient, Client clients[]);
 static void do_menu(Client * c, char * choice, int nbClient, Client clients[]);
 static void do_choose_player(Client * c, char * choice, int nbClient, Client clients[]);
+static void do_look_player(Client * c, char * choice);
+
+static void do_choose_defis(Client * c, char * choice);
+static void do_answer_defi(Client *c, char *choice);
+
+static void init_partie(Client * c1, Client * c2, Partie * p);
 
 typedef struct
 {
