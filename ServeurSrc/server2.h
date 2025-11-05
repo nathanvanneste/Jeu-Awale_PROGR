@@ -41,5 +41,20 @@ static void write_client(SOCKET sock, const char *buffer);
 static void send_message_to_all_clients(Client *clients, Client client, int actual, const char *buffer, char from_server);
 static void remove_client(Client *clients, int to_remove, int *actual);
 static void clear_clients(Client *clients, int actual);
+static void send_menu_to_client(Client * c);
+
+static void do_action(Client c, int choice, int nbClient, Client clients[]);
+static void do_menu(Client c, int choice, int nbClient, Client clients[]);
+
+typedef struct
+{
+    int size;
+    int length;
+    Client * tab;
+}TabDynamiqueClient;
+
+static void add_client(TabDynamiqueClient * tab, Client c);
+
+static Client * get_client(TabDynamiqueClient * tab, int index);
 
 #endif /* guard */

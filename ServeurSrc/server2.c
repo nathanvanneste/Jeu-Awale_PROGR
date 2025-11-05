@@ -26,6 +26,10 @@ static void end(void)
 #endif
 }
 
+// Variable globale pour le moment.
+Client clients[MAX_CLIENTS];
+int actual = 0;
+
 static void app(void)
 {
    SOCKET sock = init_connection();
@@ -34,7 +38,7 @@ static void app(void)
    int actual = 0;
    int max = sock;
    /* an array for all clients */
-   Client clients[MAX_CLIENTS];
+   
 
    fd_set rdfs;
 
@@ -93,11 +97,15 @@ static void app(void)
 
          FD_SET(csock, &rdfs);
 
-         Client c = { csock };
+         Client c;
+         c.sock = csock;
          strncpy(c.name, buffer, BUF_SIZE - 1);
+         c.etat_courant = ETAT_INIT;
          clients[actual] = c;
-         actual++;
          
+         
+         send_menu_to_client(&clients[actual]);
+         actual++;
          printf("New client connected: %s\n", buffer);
       }
       else
@@ -122,8 +130,12 @@ static void app(void)
                }
                else
                {
+                  // Ici il faut gérer selon l'état et la réponse du client
                   printf("%s: %s\n", client.name, buffer);
                   send_message_to_all_clients(clients, client, actual, buffer, 0);
+                  printf("Nombre de client boucle 1 : %d \n", actual);
+                  do_action(clients[i], atoi(buffer), actual, clients);
+                //  printf("Num envoyé : %d \n", atoi(buffer));
                }
                break;
             }
@@ -230,6 +242,102 @@ static void write_client(SOCKET sock, const char *buffer)
    {
       perror("send()");
       exit(errno);
+   }
+}
+
+static void send_menu_to_client(Client * c)
+{
+   c->etat_courant = ETAT_MENU;
+   // Définir un état menu à envoyer au client, ou bien le garder côté serveur ?
+   const char * menu = 
+   "== MENU ==\n 1 - Consulter la liste des joureurs\n 2 - Quitter\n";
+
+   write_client(c->sock, menu);
+}
+
+static void send_all_players_to_client(Client c, int nbClient, Client clients[])
+{
+   // Il faut envoyer la liste des joueurs en sachant que le client peut choisir d'en défier un parmi cette liste
+   
+   size_t taille_totale = 0;
+
+   for (int i = 0; i < nbClient; i++) {
+      if (strcmp(c.name, clients[i].name) != 0) {
+         taille_totale += strlen(clients[i].name) + 1; // +1 pour \n ou le '\0'
+      }
+   }
+
+   char *chaine = calloc(taille_totale, sizeof(char));
+   char *p = chaine;
+
+   for (int i = 0; i < nbClient; i++) {
+      if (strcmp(c.name, clients[i].name) != 0) {
+         p += sprintf(p, "%s%s", clients[i].name, i < nbClient - 1 ? "\n" : "\0");
+      }
+   }
+
+   if (p == chaine) {
+      write_client(c.sock, "Il n'y a aucun autre joueur connecté ! \n");
+   } else {
+      write_client(c.sock, chaine);
+   }
+   free(chaine);
+}
+
+static void add_client(TabDynamiqueClient * tab, Client c) {
+    if (tab->size == tab->length) {
+        // Alors il faut augmenter la taille.
+        Client * nouvTab = calloc(tab->size * 2 + 1, sizeof(Client));
+        for (int i = 0 ; i < tab->length ; ++i) {
+            nouvTab[i] = tab->tab[i];
+        }
+
+        tab->size = tab->size * 2 + 1;
+        free(tab->tab);
+        tab->tab = nouvTab;
+    }
+
+    tab->tab[tab->length] = c;
+    ++tab->length;
+}
+
+static Client * get_client(TabDynamiqueClient * tab, int index) {
+   if (index >= tab->length) {
+      return NULL;
+   }
+
+   return &tab->tab[index];
+}
+
+static void do_action(Client c, int choice, int nbClient, Client clients[]) {
+   printf("Nombre de client do action: %d \n", nbClient);
+   printf("DO ACTION, %d\n", c.etat_courant);
+   printf("CHOICE : %d \n", choice);
+   switch (c.etat_courant) {
+      case ETAT_INIT :
+         printf("etat init");
+         break;
+      case ETAT_MENU :
+         printf("etat menu");
+         do_menu(c, choice, nbClient, clients);
+
+         break;
+      default:
+         printf("default");
+         break;
+   }
+   printf("END DO ACTION \n");
+}
+
+static void do_menu(Client c, int choice, int nbClient, Client clients[]) {
+   printf("Je suis dans do_menu");
+
+   // TODO : Controler la valeur du choice;
+   switch (choice) {
+      case 1 :
+         send_all_players_to_client(c, nbClient, clients);
+         break;
+      default :
    }
 }
 

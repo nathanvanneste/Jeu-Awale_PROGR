@@ -4,6 +4,12 @@
 #include "server2.h"
 #include <stdbool.h>
 
+typedef enum {
+   ETAT_INIT,      // vaut 0
+   ETAT_MENU,  // vaut 1
+   ETAT_2    // vaut 2
+} Etat;
+
 typedef struct
 {
    char * Joueur1;
@@ -20,6 +26,7 @@ typedef struct
 {
    SOCKET sock;
    char name[BUF_SIZE];
+   Etat etat_courant;
    Partie ** parties;
 }Client;
 

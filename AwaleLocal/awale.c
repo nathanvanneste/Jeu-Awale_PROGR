@@ -116,7 +116,6 @@ void logiqueJouer(Partie * p, int numJoueur, int indiceCaseJouee) {
         ++p->plateau[dernierIndice];
     }
 
-
     p->plateau[indiceCaseJouee] = 0;
 
      //  Vérifie l’affamement avant capture 
@@ -140,7 +139,6 @@ void logiqueJouer(Partie * p, int numJoueur, int indiceCaseJouee) {
 
 //  Vérifie si le joueur peut nourrir l’adversaire (simulateur de coups) 
 bool peutNourrir(Partie *p, int joueur) {
-    printf("AAAA");
     for (int i = 0; i < 6; ++i) {
         int caseJoueur = (joueur == 1) ? i : i + 6;
         if (p->plateau[caseJoueur] == 0) {
@@ -159,8 +157,6 @@ bool peutNourrir(Partie *p, int joueur) {
     }
     return false;
 }
-
-
 
 bool coupNourritAdversaire(Partie *p, int coup, int numJoueur, int adv) {
     Partie copie;
@@ -194,8 +190,6 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
         return false;
     }
 
-    
-
     int adv = (numJoueur == 1) ? 2 : 1;
 
     if (campVide(p, adv) && !coupNourritAdversaire(p, indiceCaseJouee, numJoueur, adv)) {
@@ -210,7 +204,7 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
     //Vérifier que l'adversaire ne peut plus le nourrir si camp vide?
     //  Conditions de fin de partie 
     if (p->cptJoueur1 >= 25 || p->cptJoueur2 >= 25) {
-        printf("🏁 Fin de partie : un joueur a atteint 25 graines.\n");
+        printf("Fin de partie : un joueur a atteint 25 graines.\n");
         p->partieEnCours = false;
     } else if (campVide(p, 1) && !peutNourrir(p, 2)) {
         printf("Le camp du joueur 1 est vide et ne peut plus être nourri : fin de partie.\n");
