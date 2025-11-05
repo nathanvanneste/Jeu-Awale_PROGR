@@ -7,7 +7,8 @@
 typedef enum {
    ETAT_INIT,      // vaut 0
    ETAT_MENU,  // vaut 1
-   ETAT_2    // vaut 2
+   ETAT_CHOOSE_PLAYER,    // vaut 2
+   ETAT_LOOK_PLAYER
 } Etat;
 
 typedef struct

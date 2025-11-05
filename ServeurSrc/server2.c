@@ -134,7 +134,7 @@ static void app(void)
                   printf("%s: %s\n", client.name, buffer);
                   send_message_to_all_clients(clients, client, actual, buffer, 0);
                   printf("Nombre de client boucle 1 : %d \n", actual);
-                  do_action(clients[i], atoi(buffer), actual, clients);
+                  do_action(&clients[i], buffer, actual, clients);
                 //  printf("Num envoyé : %d \n", atoi(buffer));
                }
                break;
@@ -255,14 +255,14 @@ static void send_menu_to_client(Client * c)
    write_client(c->sock, menu);
 }
 
-static void send_all_players_to_client(Client c, int nbClient, Client clients[])
+static void send_all_players_to_client(Client * c, int nbClient, Client clients[])
 {
    // Il faut envoyer la liste des joueurs en sachant que le client peut choisir d'en défier un parmi cette liste
    
    size_t taille_totale = 0;
 
    for (int i = 0; i < nbClient; i++) {
-      if (strcmp(c.name, clients[i].name) != 0) {
+      if (strcmp(c->name, clients[i].name) != 0) {
          taille_totale += strlen(clients[i].name) + 1; // +1 pour \n ou le '\0'
       }
    }
@@ -271,15 +271,17 @@ static void send_all_players_to_client(Client c, int nbClient, Client clients[])
    char *p = chaine;
 
    for (int i = 0; i < nbClient; i++) {
-      if (strcmp(c.name, clients[i].name) != 0) {
+      if (strcmp(c->name, clients[i].name) != 0) {
          p += sprintf(p, "%s%s", clients[i].name, i < nbClient - 1 ? "\n" : "\0");
       }
    }
 
    if (p == chaine) {
-      write_client(c.sock, "Il n'y a aucun autre joueur connecté ! \n");
+      write_client(c->sock, "Il n'y a aucun autre joueur connecté ! Retour au menu. \n");
+      send_menu_to_client(c);
    } else {
-      write_client(c.sock, chaine);
+      write_client(c->sock, chaine);
+      c->etat_courant = ETAT_CHOOSE_PLAYER;
    }
    free(chaine);
 }
@@ -309,11 +311,11 @@ static Client * get_client(TabDynamiqueClient * tab, int index) {
    return &tab->tab[index];
 }
 
-static void do_action(Client c, int choice, int nbClient, Client clients[]) {
+static void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Nombre de client do action: %d \n", nbClient);
-   printf("DO ACTION, %d\n", c.etat_courant);
-   printf("CHOICE : %d \n", choice);
-   switch (c.etat_courant) {
+   printf("DO ACTION, %d\n", c->etat_courant);
+   printf("CHOICE : %s \n", choice);
+   switch (c->etat_courant) {
       case ETAT_INIT :
          printf("etat init");
          break;
@@ -322,6 +324,11 @@ static void do_action(Client c, int choice, int nbClient, Client clients[]) {
          do_menu(c, choice, nbClient, clients);
 
          break;
+
+      case ETAT_CHOOSE_PLAYER :
+         do_choose_player(c, choice, nbClient, clients);
+         
+         break;
       default:
          printf("default");
          break;
@@ -329,11 +336,37 @@ static void do_action(Client c, int choice, int nbClient, Client clients[]) {
    printf("END DO ACTION \n");
 }
 
-static void do_menu(Client c, int choice, int nbClient, Client clients[]) {
-   printf("Je suis dans do_menu");
+static void send_look_players_to_client(Client * c, Client clientLooked) {
+   c->etat_courant = ETAT_LOOK_PLAYER;
 
+   // TODO : gérer le pseudo.
+   const char * toSend = "Que voulez-vous faire avec PSEUDO ?\n 1 - Le défier\n 2 - Envoyer un message\n";
+
+
+   write_client(c->sock, toSend);
+}
+
+static void do_choose_player(Client * c, char * choice, int nbClient, Client clients[]) {
+   // Ici client a challengé choice
+   for (int i = 0 ; i < nbClient ; ++i) {
+      if (strcmp(clients[i].name, choice) == 0) {
+         // C'est lui qu'on challenge
+         // On passe en état LOOK_PLAYER
+         send_look_players_to_client(c, clients[i]);
+         return;
+      }
+   }
+
+   // Pas trouvé donc on renvoie la liste des joueurs
+   write_client(c->sock, "Le pseudo ne correspond pas à un joueur, merci de réeassayer !");
+   send_all_players_to_client(c, nbClient, clients);
+}
+
+static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
+   printf("Je suis dans do_menu");
+   int num = atoi(choice);
    // TODO : Controler la valeur du choice;
-   switch (choice) {
+   switch (num) {
       case 1 :
          send_all_players_to_client(c, nbClient, clients);
          break;

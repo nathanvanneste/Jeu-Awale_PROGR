@@ -43,8 +43,9 @@ static void remove_client(Client *clients, int to_remove, int *actual);
 static void clear_clients(Client *clients, int actual);
 static void send_menu_to_client(Client * c);
 
-static void do_action(Client c, int choice, int nbClient, Client clients[]);
-static void do_menu(Client c, int choice, int nbClient, Client clients[]);
+static void do_action(Client * c, char * choice, int nbClient, Client clients[]);
+static void do_menu(Client * c, char * choice, int nbClient, Client clients[]);
+static void do_choose_player(Client * c, char * choice, int nbClient, Client clients[]);
 
 typedef struct
 {
