@@ -5,8 +5,18 @@
 
 #include "awale.h"
 
-void initPartie(Partie * p, const char * joueur1, const char * joueur2) 
+void init_partie(Client * joueur1, Client * joueur2, Partie * p) 
 {
+
+    if (rand() % 2 == 1) {
+        p->joueur1 = joueur1;
+        p->joueur2 = joueur2;
+    } else {
+        p->joueur2 = joueur1;
+        p->joueur1 = joueur2;
+    }
+    //Changer pour un enum avec : demandee, en cours, finie
+    p->partieEnCours = true;
 
     p->sensRotation = (rand() % 2) * 2 - 1; // renvoie -1 ou +1 : (0 ou 1) * 2 donc (0 ou 2) - 1
 
@@ -18,21 +28,13 @@ void initPartie(Partie * p, const char * joueur1, const char * joueur2)
     p->plateau = calloc(12, sizeof(int));
 
     for (int i = 0; i < 12 ; ++i) {
-        p->plateau[i] = 0;
+        p->plateau[i] = 4;
     }
-
-    p->joueur1 = malloc(strlen(joueur1) + 1);
-    strcpy(p->joueur1, joueur1);
-
-    p->joueur2 = malloc(strlen(joueur2) + 1);
-    strcpy(p->joueur2, joueur2);
 }
 
 void destroyPartie(Partie * p)
 {
     free(p->plateau);
-    free(p->joueur1);
-    free(p->joueur2);
 }
 
 void copyPartie(Partie * toCopy, Partie * cp)
@@ -51,11 +53,8 @@ void copyPartie(Partie * toCopy, Partie * cp)
         cp->plateau[i] = toCopy->plateau[i];
     }
 
-    cp->joueur1 = malloc(strlen(toCopy->joueur1) + 1);
-    strcpy(cp->joueur1, toCopy->joueur1);
-
-    cp->joueur2 = malloc(strlen(toCopy->joueur2) + 1);
-    strcpy(cp->joueur2, toCopy->joueur2);
+    cp->joueur1 = toCopy->joueur1;
+    cp->joueur2 = toCopy->joueur2;
 }
 
 bool campVide(const Partie *p, int joueur) {
@@ -246,27 +245,28 @@ void afficherPlateau(const Partie *p)
 }
 
 char *plateauToString(const Partie *p) {
-    static char buffer[256];
-    char temp[32];
-    buffer[0] = 0;
 
-    strcat(buffer, "   ");
+    if (!p) return "(partie invalide)";
+
+    static char buffer[256];
+    int offset = 0;
+
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset, "   ");
     for (int i = 11; i >= 6; --i) {
-        snprintf(temp, sizeof(temp), "%2d ", p->plateau[i]);
-        strcat(buffer, temp);
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%2d ", p->plateau[i]);
     }
-    strcat(buffer, "\n   ");
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset, "\n   ");
     for (int i = 0; i < 6; ++i) {
-        snprintf(temp, sizeof(temp), "%2d ", p->plateau[i]);
-        strcat(buffer, temp);
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%2d ", p->plateau[i]);
     }
-    strcat(buffer, "\n");
+    snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
 
     return buffer;
 }
 
 
-int main()
+
+/* int main()
 {
     srand(time(NULL));
     Partie p;
@@ -334,4 +334,4 @@ int main()
     
     destroyPartie(&p);
     return 0;
-}
+} */

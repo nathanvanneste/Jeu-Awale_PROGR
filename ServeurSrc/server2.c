@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "awale.h"
 #include "server2.h"
 #include "client2.h"
 
@@ -339,27 +340,6 @@ static void send_all_parties_to_client(Client *c) {
    c->etat_courant = ETAT_CHOOSE_PARTIE;
 }
 
-static void do_choose_partie(Client *c, char *choice) {
-    int num = atoi(choice);
-    if (num <= 0 || c->indiceParties == 0) {
-        write_client(c->sock, "Numéro invalide, réessayez.\n");
-        send_all_parties_to_client(c);
-        return;
-    }
-
-    Partie *p = c->parties[num - 1];
-    c->etat_courant = ETAT_PARTIE_EN_COURS;
-
-    char msg[BUF_SIZE];
-    Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
-    snprintf(msg, sizeof(msg), "Vous jouez contre %s !\nC’est votre tour si c’est votre camp.\n", adv->name);
-    write_client(c->sock, msg);
-
-    // Appel à une fonction d’affichage de plateau
-   // afficher_plateau(c, p);
-}
-
-
 static void send_all_defis_to_client(Client * c)
 {
    // Il faut envoyer la liste des joueurs en sachant que le client peut choisir d'en défier un parmi cette liste
@@ -429,6 +409,49 @@ static Client * get_client(TabDynamiqueClient * tab, int index) {
    return &tab->tab[index];
 }
 
+static void notifier_joueur_tour(Partie *p) {
+    Client *joueur = (p->indiceJoueurActuel == 1) ? p->joueur1 : p->joueur2;
+    char msg[BUF_SIZE];
+    snprintf(msg, sizeof(msg),
+        "\nC’est à vous de jouer !\n%s\nChoisissez une case à jouer :\n",
+        plateauToString(p));
+    write_client(joueur->sock, msg);
+}
+
+static void do_partie_en_cours(Client *c, char *input) {
+    Partie *p = c->parties[c->indicePartieEnCours];
+    int numJoueur = (p->joueur1 == c) ? 1 : 2;
+
+    // Vérifie que c’est bien son tour
+    if (p->indiceJoueurActuel != numJoueur) {
+        write_client(c->sock, "Ce n’est pas votre tour !\n");
+        return;
+    }
+
+    int caseChoisie = atoi(input);
+    if (!jouerCoup(p, numJoueur, caseChoisie)) {
+        write_client(c->sock, "Coup invalide. Réessayez :\n");
+        return;
+    }
+
+    // Notifie les deux joueurs
+    char notif[BUF_SIZE];
+    Client *adv = (numJoueur == 1) ? p->joueur2 : p->joueur1;
+
+    snprintf(notif, sizeof(notif),
+        "%s a joué la case %d.\n%s",
+        c->name, caseChoisie, plateauToString(p));
+    write_client(adv->sock, notif);
+    write_client(c->sock, notif);
+
+    // Si la partie continue
+    if (p->partieEnCours) {
+        notifier_joueur_tour(p);
+    } else {
+        notifier_fin_partie(p);
+    }
+}
+
 static void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Nombre de client do action: %d \n", nbClient);
    printf("DO ACTION, %d\n", c->etat_courant);
@@ -459,15 +482,12 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
       case ETAT_CHOOSE_PARTIE:
          do_choose_partie(c, choice);
          break;
-      case ETAT_PARTIE_EN_COURS:
-         // Ici tu géreras plus tard le jeu tour par tour
-         write_client(c->sock, "Le jeu n'est pas encore implémenté. Retour au menu.\n");
-         send_menu_to_client(c);
-         break;
       case ETAT_SEND_MESSAGE:
          do_send_message(c, choice);
          break;
-
+      case ETAT_PARTIE_EN_COURS:
+         do_partie_en_cours(c, choice);
+         break;
       default:
          printf("default");
          break;
@@ -578,7 +598,6 @@ static void do_answer_defi(Client *c, char *choice) {
     }
 }
 
-
 static void do_choose_defis(Client * c, char * choice) {
    for (int i = 0 ; i < c->indiceDefis ; ++i) {
       if (strcmp(c->defisReceive[i]->name, choice) == 0) {
@@ -596,21 +615,6 @@ static void do_choose_defis(Client * c, char * choice) {
    send_all_defis_to_client(c);
 }
 
-
-static void init_partie(Client * c1, Client * c2, Partie * p) {
-   if (rand() % 2 == 1) {
-      p->joueur1 = c1;
-      p->joueur2 = c2;
-   } else {
-      p->joueur2 = c1;
-      p->joueur1 = c2;
-   }
-   //Changer pour un enum avec : demandee, en cours, finie
-   p->partieEnCours = false;
-
-   p->cptJoueur1 = 0;
-   p->cptJoueur2 = 0;
-}
 
 static void do_look_player(Client * c, char * choice) {
    printf("Je suis dans do_look_player");
@@ -631,25 +635,25 @@ static void do_look_player(Client * c, char * choice) {
             return;
          }
 
-   snprintf(message, taille, template, c->lookedPlayer->name);
+         snprintf(message, taille, template, c->lookedPlayer->name);
 
-   write_client(c->sock, message);
+         write_client(c->sock, message);
 
-   const char * template2 = "%s vous a envoyé un défi !\n";
+         const char * template2 = "%s vous a envoyé un défi !\n";
 
-   // calcul de la taille nécessaire (+1 pour le '\0')
-   size_t taille2 = snprintf(NULL, 0, template2, c->name) + 1;
-   char *message2 = malloc(taille);
-   if (!message2) {
-      return;
-   }
+         // calcul de la taille nécessaire (+1 pour le '\0')
+         size_t taille2 = snprintf(NULL, 0, template2, c->name) + 1;
+         char *message2 = malloc(taille);
+         if (!message2) {
+            return;
+         }
 
-   snprintf(message2, taille2, template2, c->name);
+         snprintf(message2, taille2, template2, c->name);
 
-   write_client(c->lookedPlayer->sock, message2);
+         write_client(c->lookedPlayer->sock, message2);
 
-// On l'ajoute au défi
-c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
+         // On l'ajoute au défi
+         c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
 
          write_client(c->sock, "Défi envoyé ! Retour au menu.");
 
@@ -659,11 +663,11 @@ c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
          c->lookedPlayer = NULL;
          send_menu_to_client(c);
          break;
-         case 2 : 
+      case 2 : 
             
-            write_client(c->sock, "✉️ Entrez le message à envoyer :\n");
-            c->etat_courant = ETAT_SEND_MESSAGE;
-            break;
+         write_client(c->sock, "Entrez le message à envoyer :\n");
+         c->etat_courant = ETAT_SEND_MESSAGE;
+         break;
       default :
          break;
    }
@@ -696,7 +700,7 @@ static void do_send_message(Client *c, char *choice) {
 
 static void send_all_messages_to_client(Client *c) {
     if (c->nbMessages == 0) {
-        write_client(c->sock, "📭 Aucun message reçu.\n");
+        write_client(c->sock, "Aucun message reçu.\n");
         send_menu_to_client(c);
         return;
     }
@@ -715,6 +719,53 @@ static void send_all_messages_to_client(Client *c) {
     // TODO : que faire ensuite ? Proposer la possibilité de répondre ? Supprimer un message ? Retour au menu ?
 }
 
+void notifier_fin_partie(Partie *p) {
+    char msg[BUF_SIZE];
+    snprintf(msg, sizeof(msg),
+        "\n Partie terminée !\n"
+        "%s : %d graines\n"
+        "%s : %d graines\n",
+        p->joueur1->name, p->cptJoueur1,
+        p->joueur2->name, p->cptJoueur2);
+
+    write_client(p->joueur1->sock, msg);
+    write_client(p->joueur2->sock, msg);
+
+    send_menu_to_client(p->joueur1);
+    send_menu_to_client(p->joueur2);
+}
+
+static void do_choose_partie(Client *c, char *choice) {
+    int num = atoi(choice);
+
+    if (num <= 0 || num > c->indiceParties) {
+        write_client(c->sock, "Numéro invalide, réessayez.\n");
+        send_all_parties_to_client(c);
+        return;
+    }
+    printf("nb parties : %d\n", c->indiceParties);
+
+    Partie *p = c->parties[num - 1];
+    c->etat_courant = ETAT_PARTIE_EN_COURS;
+    c->indicePartieEnCours = num - 1;
+
+     char msg[BUF_SIZE];
+    Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
+
+    
+    snprintf(msg, sizeof(msg),
+        "Vous jouez contre %s.\n\n%s",
+        adv->name, plateauToString(p));
+    write_client(c->sock, msg);
+
+    // Si c’est son tour
+    if ((p->indiceJoueurActuel == 1 && p->joueur1 == c) ||
+        (p->indiceJoueurActuel == 2 && p->joueur2 == c)) {
+        write_client(c->sock, "\nC’est votre tour ! Choisissez une case à jouer :\n");
+    } else {
+        write_client(c->sock, "\nC’est au tour de votre adversaire. Patientez.\n");
+    } 
+}
 
 static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Je suis dans do_menu");
@@ -730,7 +781,9 @@ static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
       case 3:
          send_all_parties_to_client(c);
          break;
-      case 4: send_all_messages_to_client(c); break;
+      case 4: 
+         send_all_messages_to_client(c);
+         break;
       case 5:
       // TODO, enlever de la liste etc... Ou passer en mode disconnect ?
          write_client(c->sock, "Au revoir !\n");

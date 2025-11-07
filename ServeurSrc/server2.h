@@ -55,7 +55,11 @@ static void do_answer_defi(Client *c, char *choice);
 
 static void do_send_message(Client *c, char *choice);
 
-static void init_partie(Client * c1, Client * c2, Partie * p);
+
+char *plateauToString(const Partie *p);
+
+void notifier_fin_partie(Partie *p);
+static void do_choose_partie(Client *c, char *choice);
 
 typedef struct
 {
