@@ -71,12 +71,14 @@ typedef struct Client
    Etat etat_courant;
    Partie * parties[1024];
    int indiceParties;
-   int indicePartieEnCours;
+   Partie * partieEnCours;
    Client * defisReceive[1024];
    int indiceDefis;
 
    Message *messages[256];
    int nbMessages;
+
+   bool connecte;
 }Client;
 
 bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee);

@@ -29,6 +29,10 @@ typedef struct in_addr IN_ADDR;
 
 #define BUF_SIZE    1024
 
+#define CMD_MESSAGE "/message"
+#define CMD_BACK "/retour"
+#define CMD_MENU "/menu"
+
 #include "client2.h"
 
 static void init(void);
@@ -59,6 +63,7 @@ static void do_send_message(Client *c, char *choice);
 char *plateauToString(const Partie *p);
 
 void notifier_fin_partie(Partie *p);
+static void afficher_infos_partie(Client * c, Partie * p);
 static void do_choose_partie(Client *c, char *choice);
 
 typedef struct

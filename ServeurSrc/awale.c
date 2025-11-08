@@ -245,24 +245,60 @@ void afficherPlateau(const Partie *p)
 }
 
 char *plateauToString(const Partie *p) {
+    if (!p || !p->plateau) return "(partie invalide)";
 
-    if (!p) return "(partie invalide)";
-
-    static char buffer[256];
+    static char buffer[1024];
     int offset = 0;
 
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset, "   ");
+    // Ligne d’en-tête : indices du joueur 2 (cases 11 → 6)
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "\n==================== PLATEAU D'AWALE ====================\n"
+        "              Camp du joueur 2 : %s\n"
+        "----------------------------------------------------------\n"
+        "   Indices : [11] [10] [ 9] [ 8] [ 7] [ 6]\n"
+        "   Graines : ", 
+        p->joueur2 ? p->joueur2->name : "Inconnu");
+
     for (int i = 11; i >= 6; --i) {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%2d ", p->plateau[i]);
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[%2d] ", p->plateau[i]);
     }
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset, "\n   ");
+
+    // Ligne séparatrice
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "\n----------------------------------------------------------\n");
+
+    // Camp du joueur 1
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "   Graines : ");
     for (int i = 0; i < 6; ++i) {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%2d ", p->plateau[i]);
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[%2d] ", p->plateau[i]);
     }
-    snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
+
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "\n   Indices : [ 0] [ 1] [ 2] [ 3] [ 4] [ 5]\n"
+        "----------------------------------------------------------\n"
+        "              Camp du joueur 1 : %s\n\n",
+        p->joueur1 ? p->joueur1->name : "Inconnu");
+
+    // Scores et joueur actuel
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "Scores : %s = %d graines | %s = %d graines\n",
+        p->joueur1 ? p->joueur1->name : "J1", p->cptJoueur1,
+        p->joueur2 ? p->joueur2->name : "J2", p->cptJoueur2);
+
+    const char *joueurActuel =
+        (p->indiceJoueurActuel == 1 && p->joueur1) ? p->joueur1->name :
+        (p->indiceJoueurActuel == 2 && p->joueur2) ? p->joueur2->name :
+        "Inconnu";
+
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        "→ C’est au tour de : %s\n"
+        "==========================================================\n",
+        joueurActuel);
 
     return buffer;
 }
+
 
 
 
