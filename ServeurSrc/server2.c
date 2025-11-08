@@ -378,6 +378,7 @@ static void send_all_players_to_client(Client * c, int nbClient, Client clients[
       send_menu_to_client(c);
    } else {
       write_client(c->sock, "Voici tous les joueurs connectés, rentrez un pseudo pour plus de détail :\n");
+      write_message_menu(c->sock);
       write_client(c->sock, chaine);
       c->etat_courant = ETAT_CHOOSE_PLAYER;
    }
@@ -393,7 +394,6 @@ static void send_all_parties_to_client(Client *c) {
 
    // Comptons les parties
    int nbParties = c->indiceParties;
-   printf("Il y a %d parties \n", c->indiceParties);
 
    char buffer[BUF_SIZE * 2] = "";
    strcat(buffer, "== Vos parties en cours ==\n");
@@ -421,8 +421,10 @@ static void send_all_parties_to_client(Client *c) {
    }
 
 
-   strcat(buffer, "\nChoisissez le numéro de la partie à reprendre :\n");
+   strcat(buffer, "\nEntrez le numéro de la partie à reprendre :\n");
    write_client(c->sock, buffer);
+
+   write_message_menu(c->sock);
 
    c->etat_courant = ETAT_CHOOSE_PARTIE;
 }
@@ -468,6 +470,7 @@ static void send_all_defis_to_client(Client * c)
       c->sock,
       "Voici tous les joueurs vous ayant proposé un défi, rentrez un pseudo pour l'accepter ou refuser.\n"
    );
+   write_message_menu(c->sock);
    write_client(c->sock, chaine);
    c->etat_courant = ETAT_CHOOSE_DEFI;
    
@@ -580,6 +583,14 @@ static void do_partie_en_cours(Client *c, char *input) {
     }
 }
 
+static void do_read_messages(Client * c, char * choice) {
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+
+   write_client(c->sock, "Invalide. Pour le moment il n'y a pas d'autre choix que de retourner au menu.\n");
+}
 
 static void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Nombre de client do action: %d \n", nbClient);
@@ -600,7 +611,7 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
          
          break;
       case ETAT_LOOK_PLAYER :
-         do_look_player(c, choice);
+         do_look_player(c, choice, nbClient, clients);
          break;
       case ETAT_CHOOSE_DEFI:
          do_choose_defis(c, choice);
@@ -617,6 +628,9 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
       case ETAT_PARTIE_EN_COURS:
          do_partie_en_cours(c, choice);
          break;
+      case ETAT_READ_MESSAGES:
+         do_read_messages(c, choice);
+         break;
       default:
          printf("default");
          break;
@@ -630,8 +644,7 @@ static void send_look_players_to_client(Client *c, Client clientLooked) {
    const char *template =
       "Que voulez-vous faire avec %s ?\n"
       " 1 - Le défier\n"
-      " 2 - Envoyer un message\n"
-      " 3 - Retour au menu\n";
+      " 2 - Envoyer un message\n";
 
    // calcul de la taille nécessaire (+1 pour le '\0')
    size_t taille = snprintf(NULL, 0, template, clientLooked.name) + 1;
@@ -643,10 +656,18 @@ static void send_look_players_to_client(Client *c, Client clientLooked) {
    snprintf(message, taille, template, clientLooked.name);
 
    write_client(c->sock, message);
+   write_message_menu(c->sock);
+   write_message_back(c->sock);
    free(message);
 }
 
 static void do_choose_player(Client * c, char * choice, int nbClient, Client * clients) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+
    // Ici client a challengé choice
    for (int i = 0 ; i < nbClient ; ++i) {
       if (strcmp(clients[i].name, choice) == 0) {
@@ -732,11 +753,11 @@ static void do_answer_defi(Client *c, char *choice) {
 
         c->lookedPlayer = NULL;
         send_menu_to_client(c);
-    } else if (strcasecmp(choice, "back") == 0) {
+    } else if (strcmp_back(choice) == 0) {
       c->lookedPlayer = NULL;
       c->etat_courant = ETAT_CHOOSE_DEFI;
       send_all_defis_to_client(c);
-    } else if (strcasecmp(choice, "menu") == 0) {
+    } else if (strcmp_menu(choice) == 0) {
       c->lookedPlayer = NULL;
       c->etat_courant = ETAT_MENU;
       send_menu_to_client(c);
@@ -746,14 +767,22 @@ static void do_answer_defi(Client *c, char *choice) {
 }
 
 static void do_choose_defis(Client * c, char * choice) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);      
+      return;
+   }
+
    for (int i = 0 ; i < c->indiceDefis ; ++i) {
       if (strcmp(c->defisReceive[i]->name, choice) == 0) {
          c->lookedPlayer = c->defisReceive[i];
          c->etat_courant = ETAT_ANSWER_DEFI;
 
          char msg[BUF_SIZE];
-         snprintf(msg, sizeof(msg), "%s vous a défié ! Voulez-vous accepter ? (oui/non)\nTapez 'retour' pour revenir à la liste de sélection des défis\nTapez 'menu' pour retourner au menu\n", c->lookedPlayer->name);
+         snprintf(msg, sizeof(msg), "%s vous a défié ! Voulez-vous accepter ? (oui/non)\n", c->lookedPlayer->name);
          write_client(c->sock, msg);
+         write_message_menu(c->sock);
+         write_message_back(c->sock);
          return;
       }
    }
@@ -763,15 +792,29 @@ static void do_choose_defis(Client * c, char * choice) {
 }
 
 
-static void do_look_player(Client * c, char * choice) {
+static void do_look_player(Client * c, char * choice, int nbClient, Client * clients) {
    printf("Je suis dans do_look_player");
+
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+
+   if (strcmp_back(choice) == 0) {
+      send_all_players_to_client(c, nbClient, clients);
+      return;
+   }
+
    int num = atoi(choice);
    // TODO : Controler la valeur du choice;
    switch (num) {
       case 1 :
          printf("On va défier %s\n", c->lookedPlayer->name);
 
-         // TODO, gérer le fait de recevoir un défi.
+         // TODO : vérifier s'il n'existe pas déjà un défi entre ces deux joueurs.
+         // On l'ajoute au défi
+         c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
 
          const char *template = "Défi envoyé à %s !\n";
 
@@ -799,10 +842,9 @@ static void do_look_player(Client * c, char * choice) {
 
          write_client(c->lookedPlayer->sock, message2);
 
-         // On l'ajoute au défi
-         c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
+         
 
-         write_client(c->sock, "Défi envoyé ! Retour au menu.");
+         write_client(c->sock, "Défi envoyé ! Retour au menu.\n");
 
          // TODO : Rentrer un nom puis accepter / refuser.
 
@@ -879,6 +921,7 @@ static void send_all_messages_to_client(Client *c) {
     }
 
     write_client(c->sock, buffer);
+    write_message_menu(c->sock);
     c->etat_courant = ETAT_READ_MESSAGES;
 
     // TODO : que faire ensuite ? Proposer la possibilité de répondre ? Supprimer un message ? Retour au menu ?
@@ -929,18 +972,23 @@ static void afficher_infos_partie(Client * c, Partie * p) {
  * On récupère la partie choisie et on affiche les détails de la partie au joueur
  */
 static void do_choose_partie(Client *c, char *choice) {
-    int num = atoi(choice);
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
 
-    if (num <= 0 || num > c->indiceParties) {
-        write_client(c->sock, "Numéro invalide, réessayez.\n");
-        send_all_parties_to_client(c);
-        return;
-    }
-    printf("nb parties : %d\n", c->indiceParties);
+   int num = atoi(choice);
 
-    Partie *p = c->parties[num - 1];
-    c->etat_courant = ETAT_PARTIE_EN_COURS;
-    c->partieEnCours = p;
+   if (num <= 0 || num > c->indiceParties) {
+      write_client(c->sock, "Numéro invalide, réessayez.\n");
+      send_all_parties_to_client(c);
+      return;
+   }
+
+   Partie *p = c->parties[num - 1];
+   c->etat_courant = ETAT_PARTIE_EN_COURS;
+   c->partieEnCours = p;
 
    afficher_infos_partie(c, p);
 }

@@ -52,7 +52,7 @@ static void send_all_defis_to_client(Client * c);
 static void do_action(Client * c, char * choice, int nbClient, Client clients[]);
 static void do_menu(Client * c, char * choice, int nbClient, Client clients[]);
 static void do_choose_player(Client * c, char * choice, int nbClient, Client clients[]);
-static void do_look_player(Client * c, char * choice);
+static void do_look_player(Client * c, char * choice, int nbClient, Client * clients);
 
 static void do_choose_defis(Client * c, char * choice);
 static void do_answer_defi(Client *c, char *choice);
