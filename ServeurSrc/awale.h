@@ -42,7 +42,8 @@ typedef enum {
    ETAT_DETAIL_PARTIE_HISTORIQUE,
    ETAT_VIEW_AMIS,
    ETAT_VIEW_DEMANDES_AMIS,
-   ETAT_REPONDRE_DEMANDE_AMI
+   ETAT_REPONDRE_DEMANDE_AMI,
+   ETAT_SPECTATEUR
 } Etat;
 
 typedef struct Client Client;
@@ -67,6 +68,10 @@ typedef struct Partie
    int sensRotation;
    bool partieEnCours;
    char ** observers;
+   
+   // Spectateurs
+   struct Client *spectateurs[20];  // max 20 spectateurs par partie
+   int nbSpectateurs;
    
    // Historique
    CoupHistorique *historiqueCoups;
@@ -121,6 +126,9 @@ typedef struct Client
    char demandesAmisRecues[50][BUF_SIZE];  // demandes reçues (noms des demandeurs)
    int nbDemandesAmisRecues;
 
+   // Mode spectateur
+   Partie *partieSpectatee;          // partie que le client regarde en spectateur (NULL si pas spectateur)
+
    bool connecte;
 }Client;
 
@@ -154,5 +162,10 @@ void refuser_demande_ami(Client *c, const char *nomDemandeur);
 bool est_ami(Client *c, const char *nomAutre);
 void afficher_liste_amis(Client *c, Client clients[], int nbClients);
 void afficher_demandes_amis(Client *c);
+
+// Mode spectateur
+bool rejoindre_comme_spectateur(Client *spectateur, Partie *partie);
+void quitter_mode_spectateur(Client *spectateur);
+void notifier_spectateurs(Partie *p, const char *message);
 
 #endif /* guard */

@@ -165,6 +165,7 @@ void afficher_liste_amis(Client *c, Client clients[], int nbClients) {
     
     int amisEnLigne = 0;
     int amisHorsLigne = 0;
+    int numeroAffichage = 1;
     
     // Parcourir la liste des amis
     for (int i = 0; i < c->nbAmis; i++) {
@@ -177,15 +178,25 @@ void afficher_liste_amis(Client *c, Client clients[], int nbClients) {
                 
                 // Afficher l'état de l'ami
                 const char *statut = "Disponible";
+                bool enPartie = false;
+                
                 if (clients[j].etat_courant == ETAT_PARTIE_EN_COURS) {
                     statut = "En partie";
+                    enPartie = true;
                 } else if (clients[j].etat_courant == ETAT_CHOOSE_PLAYER ||
                            clients[j].etat_courant == ETAT_LOOK_PLAYER) {
                     statut = "Cherche un adversaire";
                 }
                 
-                snprintf(buffer, sizeof(buffer), 
-                         "  ✓ %s - [EN LIGNE] %s\n", c->amis[i], statut);
+                if (enPartie) {
+                    // Afficher avec numéro pour permettre de spectater
+                    snprintf(buffer, sizeof(buffer), 
+                             "  %d. %s - [EN LIGNE] %s 🎮 [Spectater disponible]\n", 
+                             numeroAffichage++, c->amis[i], statut);
+                } else {
+                    snprintf(buffer, sizeof(buffer), 
+                             "  ✓ %s - [EN LIGNE] %s\n", c->amis[i], statut);
+                }
                 write_client(c->sock, buffer);
                 amisEnLigne++;
                 break;
@@ -204,7 +215,11 @@ void afficher_liste_amis(Client *c, Client clients[], int nbClients) {
              "\nEn ligne: %d | Hors ligne: %d\n", amisEnLigne, amisHorsLigne);
     write_client(c->sock, buffer);
     
-    write_client(c->sock, "\nTapez '/menu' pour retour\n");
+    if (numeroAffichage > 1) {
+        write_client(c->sock, "\nTapez un numéro pour spectater une partie, '/menu' pour retour\n");
+    } else {
+        write_client(c->sock, "\nAucun ami en partie à spectater. Tapez '/menu' pour retour\n");
+    }
 }
 
 // ========== FONCTION 6 : Afficher les demandes d'amis reçues ==========
@@ -230,4 +245,102 @@ void afficher_demandes_amis(Client *c) {
     }
     
     write_client(c->sock, "\nTapez le numéro pour répondre, '/menu' pour retour\n");
+}
+
+// ========== MODE SPECTATEUR ==========
+
+// Rejoindre une partie en tant que spectateur
+bool rejoindre_comme_spectateur(Client *spectateur, Partie *partie) {
+    if (!spectateur || !partie) return false;
+    
+    // Vérifier si la partie est en cours
+    if (!partie->partieEnCours) {
+        write_client(spectateur->sock, "Cette partie est terminée.\n");
+        return false;
+    }
+    
+    // Vérifier si pas déjà spectateur de cette partie
+    for (int i = 0; i < partie->nbSpectateurs; i++) {
+        if (partie->spectateurs[i] == spectateur) {
+            write_client(spectateur->sock, "Vous êtes déjà spectateur de cette partie.\n");
+            return false;
+        }
+    }
+    
+    // Vérifier la capacité
+    if (partie->nbSpectateurs >= 20) {
+        write_client(spectateur->sock, "La partie a atteint le nombre maximum de spectateurs.\n");
+        return false;
+    }
+    
+    // Ajouter le spectateur
+    partie->spectateurs[partie->nbSpectateurs++] = spectateur;
+    spectateur->partieSpectatee = partie;
+    spectateur->etat_courant = ETAT_SPECTATEUR;
+    
+    char buffer[BUF_SIZE];
+    snprintf(buffer, sizeof(buffer), 
+             "\n=== MODE SPECTATEUR ===\n"
+             "Vous regardez : %s vs %s\n"
+             "Score : %d - %d\n\n",
+             partie->joueur1->name, partie->joueur2->name,
+             partie->cptJoueur1, partie->cptJoueur2);
+    write_client(spectateur->sock, buffer);
+    
+    // Afficher le plateau actuel
+    char *plateauStr = plateauToString(partie);
+    write_client(spectateur->sock, plateauStr);
+    
+    write_client(spectateur->sock, "\nTapez '/menu' pour quitter le mode spectateur\n\n");
+    
+    // Notifier les joueurs
+    snprintf(buffer, sizeof(buffer), 
+             "[SPECTATEUR] %s regarde maintenant votre partie\n", 
+             spectateur->name);
+    write_client(partie->joueur1->sock, buffer);
+    write_client(partie->joueur2->sock, buffer);
+    
+    return true;
+}
+
+// Quitter le mode spectateur
+void quitter_mode_spectateur(Client *spectateur) {
+    if (!spectateur || !spectateur->partieSpectatee) return;
+    
+    Partie *partie = spectateur->partieSpectatee;
+    
+    // Retirer le spectateur de la liste
+    for (int i = 0; i < partie->nbSpectateurs; i++) {
+        if (partie->spectateurs[i] == spectateur) {
+            // Décaler les éléments suivants
+            for (int j = i; j < partie->nbSpectateurs - 1; j++) {
+                partie->spectateurs[j] = partie->spectateurs[j + 1];
+            }
+            partie->nbSpectateurs--;
+            break;
+        }
+    }
+    
+    spectateur->partieSpectatee = NULL;
+    
+    // Notifier les joueurs
+    char buffer[BUF_SIZE];
+    snprintf(buffer, sizeof(buffer), 
+             "[SPECTATEUR] %s ne regarde plus votre partie\n", 
+             spectateur->name);
+    write_client(partie->joueur1->sock, buffer);
+    write_client(partie->joueur2->sock, buffer);
+    
+    write_client(spectateur->sock, "Vous avez quitté le mode spectateur.\n");
+}
+
+// Envoyer un message à tous les spectateurs d'une partie
+void notifier_spectateurs(Partie *p, const char *message) {
+    if (!p || !message) return;
+    
+    for (int i = 0; i < p->nbSpectateurs; i++) {
+        if (p->spectateurs[i] && p->spectateurs[i]->connecte) {
+            write_client(p->spectateurs[i]->sock, message);
+        }
+    }
 }

@@ -13,6 +13,7 @@ static void do_detail_partie_historique(Client *c, char *choice);
 static void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]);
 static void do_view_demandes_amis(Client *c, char *choice, int nbClient, Client clients[]);
 static void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]);
+static void do_spectateur(Client *c, char *choice);
 
 // Fonctions utiles pour la commande menu
 static void write_message_menu(SOCKET sock) {
@@ -201,8 +202,9 @@ static void app(void)
             c.connecte = true;
             c.nbPartiesHistorique = 0;
             c.indicePartieVisionnee = -1;
-            c.nbAmis = 0;                   // NOUVEAU : Amis
-            c.nbDemandesAmisRecues = 0;     // NOUVEAU : Demandes d'amis
+            c.nbAmis = 0;
+            c.nbDemandesAmisRecues = 0;
+            c.partieSpectatee = NULL;       // NOUVEAU : Mode spectateur
 
             clients[actual++] = c;
             write_client(c.sock, "Bienvenue !\n");
@@ -518,11 +520,19 @@ static Client * get_client(TabDynamiqueClient * tab, int index) {
 
 static void notifier_joueur_tour(Partie *p) {
     Client *joueur = (p->indiceJoueurActuel == 1) ? p->joueur1 : p->joueur2;
-    char msg[BUF_SIZE];
+    char *plateau = plateauToString(p);
+    char msg[BUF_SIZE * 2];
     snprintf(msg, sizeof(msg),
-        "\nC’est à vous de jouer !\n%s\nChoisissez une case à jouer :\n",
-        plateauToString(p));
+        "\nC'est à vous de jouer !\n%s\nChoisissez une case à jouer :\n",
+        plateau);
     write_client(joueur->sock, msg);
+    
+    // NOUVEAU : Notifier les spectateurs
+    char msgSpectateurs[BUF_SIZE * 2];
+    snprintf(msgSpectateurs, sizeof(msgSpectateurs),
+        "\nC'est au tour de %s\n%s\n",
+        joueur->name, plateau);
+    notifier_spectateurs(p, msgSpectateurs);
 }
 
 static void do_partie_en_cours(Client *c, char *input) {
@@ -579,15 +589,19 @@ static void do_partie_en_cours(Client *c, char *input) {
     }
 
     // Notifie les deux joueurs
-    char notif[BUF_SIZE];
+    char notif[BUF_SIZE * 2];
     Client *adv = (numJoueur == 1) ? p->joueur2 : p->joueur1;
-
+    
+    char *plateau = plateauToString(p);
     snprintf(notif, sizeof(notif),
         "%s a joué la case %d.\n%s",
-        c->name, caseChoisie, plateauToString(p));
+        c->name, caseChoisie, plateau);
 
     write_client(adv->sock, notif);
     write_client(c->sock, notif);
+    
+    // NOUVEAU : Notifier les spectateurs
+    notifier_spectateurs(p, notif);
 
     // Si la partie continue
     if (p->partieEnCours) {
@@ -659,6 +673,9 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
          break;
       case ETAT_REPONDRE_DEMANDE_AMI:
          do_repondre_demande_ami(c, choice, nbClient, clients);
+         break;
+      case ETAT_SPECTATEUR:
+         do_spectateur(c, choice);
          break;
       default:
          printf("default");
@@ -978,6 +995,19 @@ void notifier_fin_partie(Partie *p) {
 
     write_client(p->joueur1->sock, msg);
     write_client(p->joueur2->sock, msg);
+    
+    // NOUVEAU : Notifier les spectateurs
+    notifier_spectateurs(p, msg);
+    
+    // Déconnecter les spectateurs
+    for (int i = p->nbSpectateurs - 1; i >= 0; i--) {
+        if (p->spectateurs[i]) {
+            write_client(p->spectateurs[i]->sock, "La partie est terminée. Retour au menu.\n");
+            p->spectateurs[i]->partieSpectatee = NULL;
+            send_menu_to_client(p->spectateurs[i]);
+        }
+    }
+    p->nbSpectateurs = 0;
 
     send_menu_to_client(p->joueur1);
     send_menu_to_client(p->joueur2);
@@ -985,12 +1015,13 @@ void notifier_fin_partie(Partie *p) {
 
 static void afficher_infos_partie(Client * c, Partie * p) {
    
-   char msg[BUF_SIZE];
+   char msg[BUF_SIZE * 2];
    Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
-
+   
+   char *plateau = plateauToString(p);
    snprintf(msg, sizeof(msg),
       "Vous jouez contre %s.\n\n%s",
-      adv->name, plateauToString(p));
+      adv->name, plateau);
    write_client(c->sock, msg);
 
    // On affiche les commandes existantes
@@ -1099,6 +1130,37 @@ static void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]
       return;
    }
    
+   // Vérifier si c'est un numéro (pour spectater)
+   int num = atoi(choice);
+   if (num > 0) {
+      // Trouver l'ami en partie correspondant
+      int numeroAffichage = 1;
+      for (int i = 0; i < c->nbAmis; i++) {
+         for (int j = 0; j < nbClient; j++) {
+            if (strcmp(clients[j].name, c->amis[i]) == 0 && 
+                clients[j].connecte &&
+                clients[j].etat_courant == ETAT_PARTIE_EN_COURS) {
+               
+               if (numeroAffichage == num) {
+                  // Trouvé ! Rejoindre comme spectateur
+                  if (clients[j].partieEnCours) {
+                     if (rejoindre_comme_spectateur(c, clients[j].partieEnCours)) {
+                        return; // Le client est maintenant en mode spectateur
+                     }
+                  } else {
+                     write_client(c->sock, "Erreur : partie introuvable.\n");
+                  }
+                  afficher_liste_amis(c, clients, nbClient);
+                  return;
+               }
+               numeroAffichage++;
+               break;
+            }
+         }
+      }
+      write_client(c->sock, "Numéro invalide.\n");
+   }
+   
    // Réafficher la liste
    afficher_liste_amis(c, clients, nbClient);
 }
@@ -1164,6 +1226,19 @@ static void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Clien
    } else {
       write_client(c->sock, "Réponse invalide. Tapez 'oui', 'non', 'menu' ou 'retour'.\n");
    }
+}
+
+static void do_spectateur(Client *c, char *choice) {
+   // Quitter le mode spectateur
+   if (strcmp_menu(choice) == 0) {
+      quitter_mode_spectateur(c);
+      send_menu_to_client(c);
+      return;
+   }
+   
+   // En mode spectateur, on ignore les autres commandes
+   // Le spectateur reçoit automatiquement les mises à jour de la partie
+   write_client(c->sock, "Mode spectateur : vous ne pouvez pas interagir. Tapez '/menu' pour quitter.\n");
 }
 
 static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
