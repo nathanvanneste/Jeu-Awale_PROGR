@@ -37,11 +37,21 @@ typedef enum {
    ETAT_CHOOSE_PARTIE,
    ETAT_PARTIE_EN_COURS,
    ETAT_SEND_MESSAGE,
-   ETAT_READ_MESSAGES
+   ETAT_READ_MESSAGES,
+   ETAT_VIEW_HISTORIQUE,
+   ETAT_DETAIL_PARTIE_HISTORIQUE
 } Etat;
 
 typedef struct Client Client;
 typedef struct Partie Partie;
+
+// Représentation d'un coup joué
+typedef struct {
+    int numJoueur;          // 1 ou 2
+    int caseJouee;          // 0-11
+    int grainesCapturees;   // nombre de graines capturées ce tour
+    time_t timestamp;       // horodatage du coup
+} CoupHistorique;
 
 typedef struct Partie
 {
@@ -54,7 +64,27 @@ typedef struct Partie
    int sensRotation;
    bool partieEnCours;
    char ** observers;
+   
+   // Historique
+   CoupHistorique *historiqueCoups;
+   int nbCoupsJoues;
+   int capaciteHistorique;
 }Partie;
+
+typedef struct {
+    char nomJoueur1[BUF_SIZE];
+    char nomJoueur2[BUF_SIZE];
+    int scoreJoueur1;
+    int scoreJoueur2;
+    char vainqueur[BUF_SIZE];  // nom du gagnant ou "Égalité"
+    time_t dateDebut;
+    time_t dateFin;
+    int sensRotation;          // pour pouvoir rejouer
+    int premierJoueur;         // qui a commencé
+    CoupHistorique *coups;     // tableau dynamique des coups
+    int nbCoups;
+    int capaciteCoups;
+} PartieTerminee;
 
 typedef struct
 {
@@ -78,6 +108,10 @@ typedef struct Client
    Message *messages[256];
    int nbMessages;
 
+   PartieTerminee *historique[256];  // historique des parties terminées
+   int nbPartiesHistorique;
+   int indicePartieVisionnee;        // pour navigation dans détails
+
    bool connecte;
 }Client;
 
@@ -93,5 +127,15 @@ bool campVide(const Partie *p, int joueur);
 void copyPartie(Partie * toCopy, Partie * cp);
 void destroyPartie(Partie * p);
 void init_partie(Client * joueur1, Client * joueur2, Partie * p);
+
+// Gestion de l'historique
+void enregistrer_coup(Partie *p, int numJoueur, int caseJouee, int grainesCapturees);
+void finaliser_partie_historique(Partie *p, PartieTerminee *hist);
+void sauvegarder_partie_terminee(Client *c1, Client *c2, PartieTerminee *hist);
+
+// Consultation
+void afficher_historique_parties(Client *c);
+void afficher_detail_partie_historique(Client *c, int indicePartie);
+void rejouer_partie_en_accelere(Client *client, PartieTerminee *hist);  // replay automatique
 
 #endif /* guard */

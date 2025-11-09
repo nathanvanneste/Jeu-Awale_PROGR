@@ -7,6 +7,10 @@
 #include "server2.h"
 #include "client2.h"
 
+// Déclarations forward pour les nouvelles fonctions
+static void do_view_historique(Client *c, char *choice);
+static void do_detail_partie_historique(Client *c, char *choice);
+
 // Fonctions utiles pour la commande menu
 static void write_message_menu(SOCKET sock) {
    char buffer[128];
@@ -192,6 +196,8 @@ static void app(void)
             c.partieEnCours = NULL;
             c.nbMessages = 0;
             c.connecte = true;
+            c.nbPartiesHistorique = 0;      // NOUVEAU
+            c.indicePartieVisionnee = -1;   // NOUVEAU
 
             clients[actual++] = c;
             write_client(c.sock, "Bienvenue !\n");
@@ -328,7 +334,7 @@ static int read_client(SOCKET sock, char *buffer)
    return n;
 }
 
-static void write_client(SOCKET sock, const char *buffer)
+void write_client(SOCKET sock, const char *buffer)
 {
    if(send(sock, buffer, strlen(buffer), 0) < 0)
    {
@@ -347,7 +353,8 @@ static void send_menu_to_client(Client * c)
    "2 - Consulter ma liste de défis\n"
    "3 - Consulter mes parties\n"
    "4 - Consulter mes messages\n"
-   "5 - Quitter\n";
+   "5 - Consulter mon historique\n"
+   "6 - Quitter\n";
 
    write_client(c->sock, menu);
 }
@@ -630,6 +637,12 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
          break;
       case ETAT_READ_MESSAGES:
          do_read_messages(c, choice);
+         break;
+      case ETAT_VIEW_HISTORIQUE:
+         do_view_historique(c, choice);
+         break;
+      case ETAT_DETAIL_PARTIE_HISTORIQUE:
+         do_detail_partie_historique(c, choice);
          break;
       default:
          printf("default");
@@ -993,6 +1006,63 @@ static void do_choose_partie(Client *c, char *choice) {
    afficher_infos_partie(c, p);
 }
 
+/**
+ * NOUVEAU : Gère l'état VIEW_HISTORIQUE (liste des parties)
+ */
+static void do_view_historique(Client *c, char *choice) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+   
+   // Vérifier si c'est un numéro de partie
+   int num = atoi(choice);
+   if (num > 0 && num <= c->nbPartiesHistorique) {
+      // Afficher le détail de cette partie
+      afficher_detail_partie_historique(c, num - 1);
+      c->etat_courant = ETAT_DETAIL_PARTIE_HISTORIQUE;
+      c->indicePartieVisionnee = num - 1;
+   } else {
+      write_client(c->sock, "Numéro invalide. Réessayez.\n");
+      afficher_historique_parties(c);
+   }
+}
+
+/**
+ * NOUVEAU : Gère l'état DETAIL_PARTIE_HISTORIQUE (détails d'une partie)
+ */
+static void do_detail_partie_historique(Client *c, char *choice) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+   
+   // Retour à la liste d'historique
+   if (strcmp_back(choice) == 0) {
+      afficher_historique_parties(c);
+      c->etat_courant = ETAT_VIEW_HISTORIQUE;
+      return;
+   }
+   
+   // Replay de la partie
+   if (strcasecmp(choice, "replay") == 0) {
+      if (c->indicePartieVisionnee >= 0 && 
+          c->indicePartieVisionnee < c->nbPartiesHistorique) {
+         
+         PartieTerminee *partie = c->historique[c->indicePartieVisionnee];
+         rejouer_partie_en_accelere(c, partie);
+      }
+      
+      // Réafficher les détails
+      afficher_detail_partie_historique(c, c->indicePartieVisionnee);
+      return;
+   }
+   
+   write_client(c->sock, "Commande non reconnue. ('menu', 'retour' ou 'replay')\n");
+}
+
 static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Je suis dans do_menu");
    int num = atoi(choice);
@@ -1011,6 +1081,11 @@ static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
          send_all_messages_to_client(c);
          break;
       case 5:
+         // NOUVEAU : Historique des parties
+         afficher_historique_parties(c);
+         c->etat_courant = ETAT_VIEW_HISTORIQUE;
+         break;
+      case 6:
          deconnecter_client(c);
          break;
       default:

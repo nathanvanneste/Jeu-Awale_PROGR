@@ -30,11 +30,22 @@ void init_partie(Client * joueur1, Client * joueur2, Partie * p)
     for (int i = 0; i < 12 ; ++i) {
         p->plateau[i] = 4;
     }
+
+    // NOUVEAU : Initialiser l'historique
+    p->historiqueCoups = NULL;
+    p->nbCoupsJoues = 0;
+    p->capaciteHistorique = 0;
 }
 
 void destroyPartie(Partie * p)
 {
     free(p->plateau);
+    
+    // NOUVEAU : Libérer l'historique
+    if (p->historiqueCoups) {
+        free(p->historiqueCoups);
+        p->historiqueCoups = NULL;
+    }
 }
 
 void copyPartie(Partie * toCopy, Partie * cp)
@@ -196,7 +207,15 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
         return false;
     }
 
+    // NOUVEAU : Sauvegarder score avant pour calculer les captures
+    int scoreAvant = (numJoueur == 1) ? p->cptJoueur1 : p->cptJoueur2;
+
     logiqueJouer(p, numJoueur, indiceCaseJouee);
+
+    // NOUVEAU : Enregistrer le coup dans l'historique
+    int scoreApres = (numJoueur == 1) ? p->cptJoueur1 : p->cptJoueur2;
+    int grainesCapturees = scoreApres - scoreAvant;
+    enregistrer_coup(p, numJoueur, indiceCaseJouee, grainesCapturees);
 
     p->indiceJoueurActuel = (p->indiceJoueurActuel % 2) + 1;
 
@@ -221,6 +240,17 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
             p->plateau[i] = 0;
         }
         p->partieEnCours = false;
+    }
+
+    // NOUVEAU : Si partie terminée, sauvegarder dans l'historique
+    if (!p->partieEnCours) {
+        PartieTerminee *hist = malloc(sizeof(PartieTerminee));
+        if (hist) {
+            finaliser_partie_historique(p, hist);
+            sauvegarder_partie_terminee(p->joueur1, p->joueur2, hist);
+            free(hist->coups);  // Libérer le tableau temporaire
+            free(hist);
+        }
     }
 
     return true;
