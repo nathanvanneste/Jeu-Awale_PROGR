@@ -12,7 +12,7 @@ CFLAGS = -Wall -Wextra
 
 # Fichiers sources et objets
 CLIENT_SRC = $(CLIENT_DIR)/client2.c
-SERVER_SRC = $(SERVER_DIR)/server2.c $(SERVER_DIR)/awale.c $(SERVER_DIR)/historique_minimal.c
+SERVER_SRC = $(SERVER_DIR)/server2.c $(SERVER_DIR)/awale.c $(SERVER_DIR)/historique_minimal.c $(SERVER_DIR)/amis.c
 
 CLIENT_OBJ = $(CLIENT_SRC:.c=.o)
 SERVER_OBJ = $(SERVER_SRC:.c=.o)

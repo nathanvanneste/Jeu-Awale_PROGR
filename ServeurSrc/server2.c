@@ -10,6 +10,9 @@
 // Déclarations forward pour les nouvelles fonctions
 static void do_view_historique(Client *c, char *choice);
 static void do_detail_partie_historique(Client *c, char *choice);
+static void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]);
+static void do_view_demandes_amis(Client *c, char *choice, int nbClient, Client clients[]);
+static void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]);
 
 // Fonctions utiles pour la commande menu
 static void write_message_menu(SOCKET sock) {
@@ -196,8 +199,10 @@ static void app(void)
             c.partieEnCours = NULL;
             c.nbMessages = 0;
             c.connecte = true;
-            c.nbPartiesHistorique = 0;      // NOUVEAU
-            c.indicePartieVisionnee = -1;   // NOUVEAU
+            c.nbPartiesHistorique = 0;
+            c.indicePartieVisionnee = -1;
+            c.nbAmis = 0;                   // NOUVEAU : Amis
+            c.nbDemandesAmisRecues = 0;     // NOUVEAU : Demandes d'amis
 
             clients[actual++] = c;
             write_client(c.sock, "Bienvenue !\n");
@@ -354,7 +359,9 @@ static void send_menu_to_client(Client * c)
    "3 - Consulter mes parties\n"
    "4 - Consulter mes messages\n"
    "5 - Consulter mon historique\n"
-   "6 - Quitter\n";
+   "6 - Voir mes amis en ligne\n"
+   "7 - Voir mes demandes d'amis\n"
+   "8 - Quitter\n";
 
    write_client(c->sock, menu);
 }
@@ -644,6 +651,15 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
       case ETAT_DETAIL_PARTIE_HISTORIQUE:
          do_detail_partie_historique(c, choice);
          break;
+      case ETAT_VIEW_AMIS:
+         do_view_amis(c, choice, nbClient, clients);
+         break;
+      case ETAT_VIEW_DEMANDES_AMIS:
+         do_view_demandes_amis(c, choice, nbClient, clients);
+         break;
+      case ETAT_REPONDRE_DEMANDE_AMI:
+         do_repondre_demande_ami(c, choice, nbClient, clients);
+         break;
       default:
          printf("default");
          break;
@@ -654,24 +670,29 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
 static void send_look_players_to_client(Client *c, Client clientLooked) {
    c->etat_courant = ETAT_LOOK_PLAYER;
 
-   const char *template =
-      "Que voulez-vous faire avec %s ?\n"
-      " 1 - Le défier\n"
-      " 2 - Envoyer un message\n";
-
-   // calcul de la taille nécessaire (+1 pour le '\0')
-   size_t taille = snprintf(NULL, 0, template, clientLooked.name) + 1;
-   char *message = malloc(taille);
-   if (!message) {
-      return;
+   char buffer[BUF_SIZE * 2];
+   
+   // Vérifier si déjà ami
+   bool dejaAmi = est_ami(c, clientLooked.name);
+   
+   if (dejaAmi) {
+      snprintf(buffer, sizeof(buffer),
+         "Que voulez-vous faire avec %s ? [AMI ✓]\n"
+         " 1 - Le défier\n"
+         " 2 - Envoyer un message\n",
+         clientLooked.name);
+   } else {
+      snprintf(buffer, sizeof(buffer),
+         "Que voulez-vous faire avec %s ?\n"
+         " 1 - Le défier\n"
+         " 2 - Envoyer un message\n"
+         " 3 - Envoyer une demande d'ami\n",
+         clientLooked.name);
    }
 
-   snprintf(message, taille, template, clientLooked.name);
-
-   write_client(c->sock, message);
+   write_client(c->sock, buffer);
    write_message_menu(c->sock);
    write_message_back(c->sock);
-   free(message);
 }
 
 static void do_choose_player(Client * c, char * choice, int nbClient, Client * clients) {
@@ -871,6 +892,12 @@ static void do_look_player(Client * c, char * choice, int nbClient, Client * cli
          write_message_menu(c->sock);
          c->etat_courant = ETAT_SEND_MESSAGE;
          break;
+      case 3 :
+         // Envoyer une demande d'ami
+         envoyer_demande_ami(c, c->lookedPlayer);
+         c->lookedPlayer = NULL;
+         send_menu_to_client(c);
+         break;
       default :
          break;
    }
@@ -1063,6 +1090,82 @@ static void do_detail_partie_historique(Client *c, char *choice) {
    write_client(c->sock, "Commande non reconnue. ('menu', 'retour' ou 'replay')\n");
 }
 
+// ========== GESTION DES AMIS ==========
+
+static void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+   
+   // Réafficher la liste
+   afficher_liste_amis(c, clients, nbClient);
+}
+
+static void do_view_demandes_amis(Client *c, char *choice, int nbClient, Client clients[]) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+   
+   // Vérifier si c'est un numéro
+   int num = atoi(choice);
+   if (num > 0 && num <= c->nbDemandesAmisRecues) {
+      // Demander accepter ou refuser
+      c->etat_courant = ETAT_REPONDRE_DEMANDE_AMI;
+      c->indicePartieVisionnee = num - 1;  // Réutiliser ce champ pour stocker l'indice
+      
+      char buffer[BUF_SIZE];
+      snprintf(buffer, sizeof(buffer), 
+               "Répondre à la demande de %s ?\n"
+               "Tapez 'oui' pour accepter, 'non' pour refuser\n",
+               c->demandesAmisRecues[num - 1]);
+      write_client(c->sock, buffer);
+      write_message_menu(c->sock);
+      write_message_back(c->sock);
+      return;
+   }
+   
+   write_client(c->sock, "Numéro invalide. Tapez 'menu' pour retour.\n");
+}
+
+static void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+   
+   // Retour aux demandes
+   if (strcmp_back(choice) == 0) {
+      afficher_demandes_amis(c);
+      c->etat_courant = ETAT_VIEW_DEMANDES_AMIS;
+      return;
+   }
+   
+   if (c->indicePartieVisionnee < 0 || c->indicePartieVisionnee >= c->nbDemandesAmisRecues) {
+      write_client(c->sock, "Erreur : demande invalide.\n");
+      send_menu_to_client(c);
+      return;
+   }
+   
+   const char *nomDemandeur = c->demandesAmisRecues[c->indicePartieVisionnee];
+   
+   if (strcasecmp(choice, "oui") == 0) {
+      accepter_demande_ami(c, nomDemandeur, clients, nbClient);
+      c->indicePartieVisionnee = -1;
+      send_menu_to_client(c);
+   } else if (strcasecmp(choice, "non") == 0) {
+      refuser_demande_ami(c, nomDemandeur);
+      c->indicePartieVisionnee = -1;
+      send_menu_to_client(c);
+   } else {
+      write_client(c->sock, "Réponse invalide. Tapez 'oui', 'non', 'menu' ou 'retour'.\n");
+   }
+}
+
 static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Je suis dans do_menu");
    int num = atoi(choice);
@@ -1081,11 +1184,21 @@ static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
          send_all_messages_to_client(c);
          break;
       case 5:
-         // NOUVEAU : Historique des parties
+         // Historique des parties
          afficher_historique_parties(c);
          c->etat_courant = ETAT_VIEW_HISTORIQUE;
          break;
       case 6:
+         // NOUVEAU : Liste des amis
+         afficher_liste_amis(c, clients, nbClient);
+         c->etat_courant = ETAT_VIEW_AMIS;
+         break;
+      case 7:
+         // NOUVEAU : Demandes d'amis
+         afficher_demandes_amis(c);
+         c->etat_courant = ETAT_VIEW_DEMANDES_AMIS;
+         break;
+      case 8:
          deconnecter_client(c);
          break;
       default:

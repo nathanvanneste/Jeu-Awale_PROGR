@@ -39,7 +39,10 @@ typedef enum {
    ETAT_SEND_MESSAGE,
    ETAT_READ_MESSAGES,
    ETAT_VIEW_HISTORIQUE,
-   ETAT_DETAIL_PARTIE_HISTORIQUE
+   ETAT_DETAIL_PARTIE_HISTORIQUE,
+   ETAT_VIEW_AMIS,
+   ETAT_VIEW_DEMANDES_AMIS,
+   ETAT_REPONDRE_DEMANDE_AMI
 } Etat;
 
 typedef struct Client Client;
@@ -112,6 +115,12 @@ typedef struct Client
    int nbPartiesHistorique;
    int indicePartieVisionnee;        // pour navigation dans détails
 
+   // Système d'amis
+   char amis[100][BUF_SIZE];         // liste des amis (noms)
+   int nbAmis;
+   char demandesAmisRecues[50][BUF_SIZE];  // demandes reçues (noms des demandeurs)
+   int nbDemandesAmisRecues;
+
    bool connecte;
 }Client;
 
@@ -137,5 +146,13 @@ void sauvegarder_partie_terminee(Client *c1, Client *c2, PartieTerminee *hist);
 void afficher_historique_parties(Client *c);
 void afficher_detail_partie_historique(Client *c, int indicePartie);
 void rejouer_partie_en_accelere(Client *client, PartieTerminee *hist);  // replay automatique
+
+// Gestion des amis
+void envoyer_demande_ami(Client *demandeur, Client *destinataire);
+void accepter_demande_ami(Client *c, const char *nomDemandeur, Client clients[], int nbClients);
+void refuser_demande_ami(Client *c, const char *nomDemandeur);
+bool est_ami(Client *c, const char *nomAutre);
+void afficher_liste_amis(Client *c, Client clients[], int nbClients);
+void afficher_demandes_amis(Client *c);
 
 #endif /* guard */
