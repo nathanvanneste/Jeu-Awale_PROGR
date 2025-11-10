@@ -94,7 +94,12 @@ void app(void) {
    int max = sock;
    fd_set rdfs;
 
-   Client clients[MAX_CLIENTS];
+   // Allocation dynamique pour éviter stack overflow (Client est très gros ~170Ko)
+   Client *clients = calloc(MAX_CLIENTS, sizeof(Client));
+   if (!clients) {
+      perror("Erreur allocation mémoire clients");
+      exit(EXIT_FAILURE);
+   }
 
    while (1)
    {
@@ -251,6 +256,7 @@ void app(void) {
    }
 
    clear_clients(clients, actual);
+   free(clients);  // Libérer la mémoire allouée dynamiquement
    end_connection(sock);
 }
 
@@ -1042,7 +1048,7 @@ void afficher_infos_partie(Client * c, Partie * p) {
    write_message_message(c->sock);
 
    // Si c’est son tour
-   if (p->partieEnCours) {
+   if (!p->partieEnCours) {
       write_client(c->sock, "\nLa partie est terminée.\n");
    } else if ((p->indiceJoueurActuel == 1 && p->joueur1 == c) ||
       (p->indiceJoueurActuel == 2 && p->joueur2 == c)) {
