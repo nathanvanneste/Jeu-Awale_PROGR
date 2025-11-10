@@ -208,6 +208,7 @@ void app(void)
             c.nbAmis = 0;
             c.nbDemandesAmisRecues = 0;
             c.partieSpectatee = NULL;       //  Mode spectateur
+            c.bio[0] = '\0';                // Bio vide par défaut
 
             clients[actual++] = c;
             write_client(c.sock, "Bienvenue !\n");
@@ -370,7 +371,8 @@ void send_menu_to_client(Client * c)
    "5 - Consulter mon historique\n"
    "6 - Voir mes amis en ligne\n"
    "7 - Voir mes demandes d'amis\n"
-   "8 - Quitter\n";
+   "8 - Définir ma biographie\n"
+   "9 - Quitter\n";
 
    write_client(c->sock, menu);
 }
@@ -678,6 +680,9 @@ void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
       case ETAT_SPECTATEUR:
          do_spectateur(c, choice);
          break;
+      case ETAT_EDIT_BIO:
+         do_edit_bio(c, choice);
+         break;
       default:
          break;
    }
@@ -698,14 +703,16 @@ void send_look_players_to_client(Client *c, Client clientLooked) {
       snprintf(buffer, sizeof(buffer),
          "Que voulez-vous faire avec %s ? [AMI ✓]\n"
          " 1 - Le défier\n"
-         " 2 - Envoyer un message\n",
+         " 2 - Envoyer un message\n"
+         " 3 - Voir sa biographie\n",
          clientLooked.name);
    } else {
       snprintf(buffer, sizeof(buffer),
          "Que voulez-vous faire avec %s ?\n"
          " 1 - Le défier\n"
          " 2 - Envoyer un message\n"
-         " 3 - Envoyer une demande d'ami\n",
+         " 3 - Voir sa biographie\n"
+         " 4 - Envoyer une demande d'ami\n",
          clientLooked.name);
    }
 
@@ -907,6 +914,18 @@ void do_look_player(Client * c, char * choice, int nbClient, Client * clients) {
          c->etat_courant = ETAT_SEND_MESSAGE;
          break;
       case 3 :
+         // Lire la biographie du joueur
+         {
+            char buffer[BUF_SIZE * 2];
+            snprintf(buffer, sizeof(buffer), 
+                     "\n=== Biographie de %s ===\n%s\n\n",
+                     c->lookedPlayer->name,
+                     c->lookedPlayer->bio[0] != '\0' ? c->lookedPlayer->bio : "(Aucune biographie définie)");
+            write_client(c->sock, buffer);
+            send_look_players_to_client(c, *(c->lookedPlayer));
+         }
+         break;
+      case 4 :
          // Envoyer une demande d'ami
          envoyer_demande_ami(c, c->lookedPlayer);
          c->lookedPlayer = NULL;
@@ -1111,8 +1130,8 @@ void do_detail_partie_historique(Client *c, char *choice) {
       afficher_detail_partie_historique(c, c->indicePartieVisionnee);
       return;
    }
-   
-   write_client(c->sock, "Commande non reconnue. ('menu', 'retour' ou '/replay')\n");
+
+   write_client(c->sock, "Commande non reconnue. ('/menu' ou '/replay')\n");
 }
 
 // ========== GESTION DES AMIS ==========
@@ -1235,6 +1254,27 @@ void do_spectateur(Client *c, char *choice) {
    write_client(c->sock, "Mode spectateur : vous ne pouvez pas interagir. Tapez '/menu' pour quitter.\n");
 }
 
+void do_edit_bio(Client *c, char *choice) {
+   // Retour au menu
+   if (strcmp_menu(choice) == 0) {
+      send_menu_to_client(c);
+      return;
+   }
+   
+   // Limiter la taille de la bio
+   if (strlen(choice) > 500) {
+      write_client(c->sock, "Biographie trop longue (max 500 caractères). Réessayez :\n");
+      return;
+   }
+   
+   // Sauvegarder la biographie
+   strncpy(c->bio, choice, sizeof(c->bio) - 1);
+   c->bio[sizeof(c->bio) - 1] = '\0';  // Assurer la terminaison
+   
+   write_client(c->sock, "Votre biographie a été enregistrée avec succès !\n");
+   send_menu_to_client(c);
+}
+
 void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Je suis dans do_menu");
    int num = atoi(choice);
@@ -1268,6 +1308,11 @@ void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
          c->etat_courant = ETAT_VIEW_DEMANDES_AMIS;
          break;
       case 8:
+         // Définir sa biographie
+         c->etat_courant = ETAT_EDIT_BIO;
+         write_client(c->sock, "Entrez votre biographie (max 500 caractères) :\n");
+         break;
+      case 9:
          deconnecter_client(c);
          break;
       default:

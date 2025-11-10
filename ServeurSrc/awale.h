@@ -43,7 +43,8 @@ typedef enum {
    ETAT_VIEW_AMIS,
    ETAT_VIEW_DEMANDES_AMIS,
    ETAT_REPONDRE_DEMANDE_AMI,
-   ETAT_SPECTATEUR
+   ETAT_SPECTATEUR,
+   ETAT_EDIT_BIO
 } Etat;
 
 typedef struct Client Client;
@@ -128,6 +129,9 @@ typedef struct Client
 
    // Mode spectateur
    Partie *partieSpectatee;          // partie que le client regarde en spectateur (NULL si pas spectateur)
+
+   // Biographie
+   char bio[512];                    // biographie du joueur
 
    bool connecte;
 }Client;

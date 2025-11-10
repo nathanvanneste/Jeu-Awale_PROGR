@@ -41,7 +41,7 @@ void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]);
 void do_view_demandes_amis(Client *c, char *choice);
 void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]);
 void do_spectateur(Client *c, char *choice);
-
+void do_edit_bio(Client *c, char *choice);
 void init(void);
 void end(void);
 void app(void);
