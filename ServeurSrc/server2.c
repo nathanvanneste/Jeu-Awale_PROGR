@@ -8,6 +8,8 @@
 #include "client2.h"
 
 
+// === COMMANDES ===
+
 // Fonctions utiles pour la commande menu
 void write_message_menu(SOCKET sock) {
    char buffer[128];
@@ -51,22 +53,23 @@ Client *find_client_by_name(Client *clients, int nbClients, const char *name) {
 }
 
 void deconnecter_client(Client *c) {
-    if (!c) return;
+   if (!c) {
+      return;
+   }
 
-    c->connecte = false;                 
-    printf("%s s’est déconnecté proprement.\n", c->name);
+   c->connecte = false;                 
+   printf("%s s’est déconnecté proprement.\n", c->name);
 
-    write_client(c->sock, "Déconnexion en cours... À bientôt !\n");
+   write_client(c->sock, "Déconnexion en cours... À bientôt !\n");
 
-    // On ferme juste le socket, mais on garde la structure Client et ses données
-    closesocket(c->sock);
+   // On ferme juste le socket, mais on garde la structure Client et ses données
+   closesocket(c->sock);
 
-    // Par sécurité, on remet le descripteur à une valeur neutre
-    c->sock = -1;
+   // Par sécurité, on remet le descripteur à une valeur neutre
+   c->sock = -1;
 }
 
-void init(void)
-{
+void init(void) {
 #ifdef WIN32
    WSADATA wsa;
    int err = WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -78,24 +81,20 @@ void init(void)
 #endif
 }
 
-void end(void)
-{
+void end(void) {
 #ifdef WIN32
    WSACleanup();
 #endif
 }
 
-// Variable globale pour le moment.
-Client clients[MAX_CLIENTS];
-int actual = 0;
-
-void app(void)
-{
+void app(void) {
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
    int actual = 0;
    int max = sock;
    fd_set rdfs;
+
+   Client clients[MAX_CLIENTS];
 
    while (1)
    {
@@ -438,9 +437,11 @@ void send_all_parties_to_client(Client *c) {
          continue;
       }
 
-      char ligne[BUF_SIZE];
-      snprintf(ligne, sizeof(ligne), "%d - Contre %s\n", i + 1, adv->name);
-      strcat(buffer, ligne);
+      if (p->partieEnCours) {
+         char ligne[BUF_SIZE];
+         snprintf(ligne, sizeof(ligne), "%d - Contre %s\n", i + 1, adv->name);
+         strcat(buffer, ligne);
+      }
    }
 
 
@@ -617,6 +618,9 @@ void do_partie_en_cours(Client *c, char *input) {
     }
 }
 
+/**
+ * Lorsque le client consulte ses messages
+ */
 void do_read_messages(Client * c, char * choice) {
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -754,12 +758,7 @@ void do_answer_defi(Client *c, char *choice) {
         }
 
         init_partie(c, c->lookedPlayer, p);
-        // TODO : gérer les parties.
-        //c->parties = malloc(sizeof(Partie*));
-        //c->parties[0] = p;
         c->parties[c->indiceParties++] = p;
-        //c->lookedPlayer->parties = malloc(sizeof(Partie*));
-        //c->lookedPlayer->parties[0] = p;
         c->lookedPlayer->parties[c->lookedPlayer->indiceParties++] = p;
 
          // Message de confirmation
@@ -860,7 +859,6 @@ void do_look_player(Client * c, char * choice, int nbClient, Client * clients) {
    }
 
    int num = atoi(choice);
-   // TODO : Controler la valeur du choice;
    switch (num) {
       case 1 :
          printf("On va défier %s\n", c->lookedPlayer->name);
@@ -1025,7 +1023,9 @@ void afficher_infos_partie(Client * c, Partie * p) {
    write_message_message(c->sock);
 
    // Si c’est son tour
-   if ((p->indiceJoueurActuel == 1 && p->joueur1 == c) ||
+   if (p->partieEnCours) {
+      write_client(c->sock, "\nLa partie est terminée.\n");
+   } else if ((p->indiceJoueurActuel == 1 && p->joueur1 == c) ||
       (p->indiceJoueurActuel == 2 && p->joueur2 == c)) {
       write_client(c->sock, "\nC’est votre tour ! Choisissez une case à jouer :\n");
    } else {
