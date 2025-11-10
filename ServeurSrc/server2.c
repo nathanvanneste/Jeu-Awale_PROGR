@@ -344,12 +344,16 @@ int read_client(SOCKET sock, char *buffer)
    return n;
 }
 
+/**
+ * On envoie buffer sur la socket. Par convention, on a donné -1 comme valeurs pour une socket "fermée"
+ */
 void write_client(SOCKET sock, const char *buffer)
 {
-   if(send(sock, buffer, strlen(buffer), 0) < 0)
-   {
-      perror("send()");
-      exit(errno);
+   if (sock != - 1) {
+      if(send(sock, buffer, strlen(buffer), 0) < 0) {
+         perror("send()");
+         exit(errno);
+      }
    }
 }
 
@@ -1017,10 +1021,8 @@ void afficher_infos_partie(Client * c, Partie * p) {
    write_client(c->sock, msg);
 
    // On affiche les commandes existantes
-   write_client(
-      c->sock, 
-      "Pour envoyer un message à votre adversaire, tapez \"message\"\nPour retourner au menu, tapez \"menu\"\n"
-   );
+   write_message_menu(c->sock);
+   write_message_message(c->sock);
 
    // Si c’est son tour
    if ((p->indiceJoueurActuel == 1 && p->joueur1 == c) ||
@@ -1236,7 +1238,7 @@ void do_spectateur(Client *c, char *choice) {
 void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Je suis dans do_menu");
    int num = atoi(choice);
-   // TODO : Controler la valeur du choice;🤣
+
    switch (num) {
       case 1 :
          send_all_players_to_client(c, nbClient, clients);

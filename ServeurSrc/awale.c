@@ -131,7 +131,6 @@ void logiqueJouer(Partie * p, int numJoueur, int indiceCaseJouee) {
      //  Vérifie l’affamement avant capture 
     if (captureAffameAdversaire(p, numJoueur, dernierIndice)) {
         printf("Coup affamant détecté : capture annulée.\n");
-        p->indiceJoueurActuel = (p->indiceJoueurActuel % 2) + 1;
         return;
     }
 
