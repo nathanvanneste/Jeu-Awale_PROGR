@@ -327,10 +327,15 @@ char *plateauToString(const Partie *p) {
         (p->indiceJoueurActuel == 2 && p->joueur2) ? p->joueur2->name :
         "Inconnu";
 
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
-        "→ C’est au tour de : %s\n"
-        "==========================================================\n",
-        joueurActuel);
-
+    if (!p->partieEnCours) {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+            "La partie est terminée !\n"
+            "==========================================================\n");
+    } else {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+            "→ C’est au tour de : %s\n"
+            "==========================================================\n",
+            joueurActuel);    
+    }
     return buffer;
 }

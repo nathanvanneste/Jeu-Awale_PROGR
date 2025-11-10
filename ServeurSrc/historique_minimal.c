@@ -193,7 +193,7 @@ void afficher_detail_partie_historique(Client *c, int indice) {
         }
     }
     
-    snprintf(buffer, sizeof(buffer), "\nTapez 'retour' ou 'menu'\n");
+    snprintf(buffer, sizeof(buffer), "\nTapez '/retour', '/menu' ou bien '/replay' pour avoir le détail des coups\n");
     write_client(c->sock, buffer);
 }
 
