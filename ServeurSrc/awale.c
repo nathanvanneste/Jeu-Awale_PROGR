@@ -194,8 +194,8 @@ bool coupNourritAdversaire(Partie *p, int coup, int numJoueur, int adv) {
 bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
 
     if (!p->partieEnCours || numJoueur != p->indiceJoueurActuel ||
-    numJoueur == 1 && (indiceCaseJouee < 0 || indiceCaseJouee > 5) ||
-    numJoueur == 2 && (indiceCaseJouee < 6 || indiceCaseJouee > 11)) {
+    (numJoueur == 1 && (indiceCaseJouee < 0 || indiceCaseJouee > 5)) ||
+    (numJoueur == 2 && (indiceCaseJouee < 6 || indiceCaseJouee > 11))) {
         printf("Erreur, coup invalide !");
         return false;
     }
@@ -259,7 +259,7 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
 void afficherPlateau(const Partie *p)
 {
     printf("\nPlateau actuel :\n");
-    printf("   [Joueur 2 : %s]\n   ", p->joueur2);
+    printf("   [Joueur 2 : %s]\n   ", p->joueur2->name);
     for (int i = 11; i >= 6; --i) {
         printf("%2d ", p->plateau[i]);
     }
@@ -268,9 +268,9 @@ void afficherPlateau(const Partie *p)
     for (int i = 0; i < 6; ++i) {
         printf("%2d ", p->plateau[i]);
     }
-    printf("\n   [Joueur 1 : %s]\n", p->joueur1);
+    printf("\n   [Joueur 1 : %s]\n", p->joueur1->name);
     printf("\nPoints -> %s : %d   |   %s : %d\n",
-           p->joueur1, p->cptJoueur1, p->joueur2, p->cptJoueur2);
+           p->joueur1->name, p->cptJoueur1, p->joueur2->name, p->cptJoueur2);
     printf("--\n");
 }
 

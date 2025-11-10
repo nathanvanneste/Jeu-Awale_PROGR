@@ -159,6 +159,16 @@ static void app(void)
          }
          buffer[name_received] = '\0';
 
+         // Vérifier que le pseudo n'est pas une commande
+
+         if (strcasecmp(CMD_BACK, buffer) == 0 || 
+            strcasecmp(CMD_MENU, buffer) == 0 || 
+            strcasecmp(CMD_MESSAGE, buffer) == 0) {
+            write_client(csock, "Ce pseudo n'est pas disponible.\n");
+            closesocket(csock);
+            continue;
+         }
+
          /* Vérifie si ce pseudo existe déjà */
          Client *existing = find_client_by_name(clients, actual, buffer);
 
@@ -863,21 +873,25 @@ static void do_look_player(Client * c, char * choice, int nbClient, Client * cli
       case 1 :
          printf("On va défier %s\n", c->lookedPlayer->name);
 
-         // TODO : vérifier s'il n'existe pas déjà un défi entre ces deux joueurs.
+         // Vérification qu'il n'y a pas déjà un défi envoyé par ce joueur vers le lookedPlayer
+         for (int i = 0 ; i < c->lookedPlayer->indiceDefis ; ++i) {
+            if (strcmp(c->lookedPlayer->defisReceive[i]->name, c->name) == 0) {
+               write_client(c->sock, "Vous avez déjà envoyé un défi à ce joueur ! Il faut attendre sa réponse avant de pouvoir l'inviter à nouveau.\n");
+               return;
+            }
+         }
+
          // On l'ajoute au défi
          c->lookedPlayer->defisReceive[c->lookedPlayer->indiceDefis++] = c;
 
          const char *template = "Défi envoyé à %s !\n";
-
          // calcul de la taille nécessaire (+1 pour le '\0')
          size_t taille = snprintf(NULL, 0, template, c->lookedPlayer->name) + 1;
          char *message = malloc(taille);
          if (!message) {
             return;
          }
-
          snprintf(message, taille, template, c->lookedPlayer->name);
-
          write_client(c->sock, message);
 
          const char * template2 = "%s vous a envoyé un défi !\n";
@@ -888,23 +902,14 @@ static void do_look_player(Client * c, char * choice, int nbClient, Client * cli
          if (!message2) {
             return;
          }
-
          snprintf(message2, taille2, template2, c->name);
-
          write_client(c->lookedPlayer->sock, message2);
-
-         
-
          write_client(c->sock, "Défi envoyé ! Retour au menu.\n");
-
-         // TODO : Rentrer un nom puis accepter / refuser.
-
 
          c->lookedPlayer = NULL;
          send_menu_to_client(c);
          break;
-      case 2 : 
-            
+      case 2 :             
          write_client(c->sock, "Entrez le message à envoyer :\n");
          write_message_menu(c->sock);
          c->etat_courant = ETAT_SEND_MESSAGE;
@@ -921,7 +926,6 @@ static void do_look_player(Client * c, char * choice, int nbClient, Client * cli
 }
 
 static void do_send_message(Client *c, char *choice) {
-   printf("do_send_message\n");
     if (!c->lookedPlayer) {
         write_client(c->sock, "Erreur : aucun joueur sélectionné.\n");
         send_menu_to_client(c);
