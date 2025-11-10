@@ -7,48 +7,41 @@
 #include "server2.h"
 #include "client2.h"
 
-// Déclarations forward pour les nouvelles fonctions
-static void do_view_historique(Client *c, char *choice);
-static void do_detail_partie_historique(Client *c, char *choice);
-static void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]);
-static void do_view_demandes_amis(Client *c, char *choice, int nbClient, Client clients[]);
-static void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]);
-static void do_spectateur(Client *c, char *choice);
 
 // Fonctions utiles pour la commande menu
-static void write_message_menu(SOCKET sock) {
+void write_message_menu(SOCKET sock) {
    char buffer[128];
    snprintf(buffer, sizeof(buffer), "Pour info : tapez '%s' pour retourner au menu principal\n", CMD_MENU);
    write_client(sock, buffer);
 }
 
-static int strcmp_menu(const char * str) {
+int strcmp_menu(const char * str) {
    return strcasecmp(str, CMD_MENU);
 }
 
 // Fonctions utiles pour la commande message
-static void write_message_message(SOCKET sock) {
+void write_message_message(SOCKET sock) {
    char buffer[128];
    snprintf(buffer, sizeof(buffer), "Pour info : tapez '%s' pour retourner au menu principal\n", CMD_MESSAGE);
    write_client(sock, buffer);
 }
 
-static int strcmp_message(const char * str) {
+int strcmp_message(const char * str) {
    return strcasecmp(str, CMD_MESSAGE);
 }
 
 // Fonctions utiles pour la commande retour
-static void write_message_back(SOCKET sock) {
+void write_message_back(SOCKET sock) {
    char buffer[128];
    snprintf(buffer, sizeof(buffer), "Pour info : tapez '%s' pour retourner au menu principal\n", CMD_BACK);
    write_client(sock, buffer);
 }
 
-static int strcmp_back(const char * str) {
+int strcmp_back(const char * str) {
    return strcasecmp(str, CMD_BACK);
 }
 
-static Client *find_client_by_name(Client *clients, int nbClients, const char *name) {
+Client *find_client_by_name(Client *clients, int nbClients, const char *name) {
     for (int i = 0; i < nbClients; i++) {
         if (strcasecmp(clients[i].name, name) == 0) {
             return &clients[i];
@@ -57,7 +50,7 @@ static Client *find_client_by_name(Client *clients, int nbClients, const char *n
     return NULL;
 }
 
-static void deconnecter_client(Client *c) {
+void deconnecter_client(Client *c) {
     if (!c) return;
 
     c->connecte = false;                 
@@ -72,7 +65,7 @@ static void deconnecter_client(Client *c) {
     c->sock = -1;
 }
 
-static void init(void)
+void init(void)
 {
 #ifdef WIN32
    WSADATA wsa;
@@ -85,7 +78,7 @@ static void init(void)
 #endif
 }
 
-static void end(void)
+void end(void)
 {
 #ifdef WIN32
    WSACleanup();
@@ -96,7 +89,7 @@ static void end(void)
 Client clients[MAX_CLIENTS];
 int actual = 0;
 
-static void app(void)
+void app(void)
 {
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
@@ -214,7 +207,7 @@ static void app(void)
             c.indicePartieVisionnee = -1;
             c.nbAmis = 0;
             c.nbDemandesAmisRecues = 0;
-            c.partieSpectatee = NULL;       // NOUVEAU : Mode spectateur
+            c.partieSpectatee = NULL;       //  Mode spectateur
 
             clients[actual++] = c;
             write_client(c.sock, "Bienvenue !\n");
@@ -262,7 +255,7 @@ static void app(void)
 }
 
 
-static void clear_clients(Client *clients, int actual)
+void clear_clients(Client *clients, int actual)
 {
    int i = 0;
    for(i = 0; i < actual; i++)
@@ -271,7 +264,7 @@ static void clear_clients(Client *clients, int actual)
    }
 }
 
-static void remove_client(Client *clients, int to_remove, int *actual)
+void remove_client(Client *clients, int to_remove, int *actual)
 {
    /* we remove the client in the array */
    memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
@@ -279,7 +272,7 @@ static void remove_client(Client *clients, int to_remove, int *actual)
    (*actual)--;
 }
 
-static void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
+void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
 {
    int i = 0;
    char message[BUF_SIZE];
@@ -300,7 +293,7 @@ static void send_message_to_all_clients(Client *clients, Client sender, int actu
    }
 }
 
-static int init_connection(void)
+int init_connection(void)
 {
    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
    SOCKADDR_IN sin = { 0 };
@@ -330,12 +323,12 @@ static int init_connection(void)
    return sock;
 }
 
-static void end_connection(int sock)
+void end_connection(int sock)
 {
    closesocket(sock);
 }
 
-static int read_client(SOCKET sock, char *buffer)
+int read_client(SOCKET sock, char *buffer)
 {
    int n = 0;
 
@@ -360,7 +353,7 @@ void write_client(SOCKET sock, const char *buffer)
    }
 }
 
-static void send_menu_to_client(Client * c)
+void send_menu_to_client(Client * c)
 {
    c->etat_courant = ETAT_MENU;
    // Définir un état menu à envoyer au client, ou bien le garder côté serveur ?
@@ -378,7 +371,7 @@ static void send_menu_to_client(Client * c)
    write_client(c->sock, menu);
 }
 
-static void send_all_players_to_client(Client * c, int nbClient, Client clients[])
+void send_all_players_to_client(Client * c, int nbClient, Client clients[])
 {
    // Il faut envoyer la liste des joueurs en sachant que le client peut choisir d'en défier un parmi cette liste
    
@@ -411,7 +404,7 @@ static void send_all_players_to_client(Client * c, int nbClient, Client clients[
    free(chaine);
 }
 
-static void send_all_parties_to_client(Client *c) {
+void send_all_parties_to_client(Client *c) {
    if (c->indiceParties == 0) {
       write_client(c->sock, "Vous n'avez aucune partie en cours. Retour au menu.\n");
       send_menu_to_client(c);
@@ -455,7 +448,7 @@ static void send_all_parties_to_client(Client *c) {
    c->etat_courant = ETAT_CHOOSE_PARTIE;
 }
 
-static void send_all_defis_to_client(Client * c)
+void send_all_defis_to_client(Client * c)
 {
    // Il faut envoyer la liste des joueurs en sachant que le client peut choisir d'en défier un parmi cette liste
    
@@ -503,7 +496,7 @@ static void send_all_defis_to_client(Client * c)
    free(chaine);
 }
 
-static void add_client(TabDynamiqueClient * tab, Client c) {
+void add_client(TabDynamiqueClient * tab, Client c) {
     if (tab->size == tab->length) {
         // Alors il faut augmenter la taille.
         Client * nouvTab = calloc(tab->size * 2 + 1, sizeof(Client));
@@ -520,7 +513,7 @@ static void add_client(TabDynamiqueClient * tab, Client c) {
     ++tab->length;
 }
 
-static Client * get_client(TabDynamiqueClient * tab, int index) {
+Client * get_client(TabDynamiqueClient * tab, int index) {
    if (index >= tab->length) {
       return NULL;
    }
@@ -528,7 +521,7 @@ static Client * get_client(TabDynamiqueClient * tab, int index) {
    return &tab->tab[index];
 }
 
-static void notifier_joueur_tour(Partie *p) {
+void notifier_joueur_tour(Partie *p) {
     Client *joueur = (p->indiceJoueurActuel == 1) ? p->joueur1 : p->joueur2;
     char *plateau = plateauToString(p);
     char msg[BUF_SIZE * 2];
@@ -537,7 +530,7 @@ static void notifier_joueur_tour(Partie *p) {
         plateau);
     write_client(joueur->sock, msg);
     
-    // NOUVEAU : Notifier les spectateurs
+    //  Notifier les spectateurs
     char msgSpectateurs[BUF_SIZE * 2];
     snprintf(msgSpectateurs, sizeof(msgSpectateurs),
         "\nC'est au tour de %s\n%s\n",
@@ -545,7 +538,7 @@ static void notifier_joueur_tour(Partie *p) {
     notifier_spectateurs(p, msgSpectateurs);
 }
 
-static void do_partie_en_cours(Client *c, char *input) {
+void do_partie_en_cours(Client *c, char *input) {
     Partie *p = c->partieEnCours;
     if (!p || !p->partieEnCours) {
         write_client(c->sock, "Erreur : aucune partie en cours.\n");
@@ -610,7 +603,7 @@ static void do_partie_en_cours(Client *c, char *input) {
     write_client(adv->sock, notif);
     write_client(c->sock, notif);
     
-    // NOUVEAU : Notifier les spectateurs
+    //  Notifier les spectateurs
     notifier_spectateurs(p, notif);
 
     // Si la partie continue
@@ -621,7 +614,7 @@ static void do_partie_en_cours(Client *c, char *input) {
     }
 }
 
-static void do_read_messages(Client * c, char * choice) {
+void do_read_messages(Client * c, char * choice) {
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
       return;
@@ -630,7 +623,7 @@ static void do_read_messages(Client * c, char * choice) {
    write_client(c->sock, "Invalide. Pour le moment il n'y a pas d'autre choix que de retourner au menu.\n");
 }
 
-static void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
+void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Nombre de client do action: %d \n", nbClient);
    printf("DO ACTION, %d\n", c->etat_courant);
    printf("CHOICE : %s \n", choice);
@@ -679,7 +672,7 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
          do_view_amis(c, choice, nbClient, clients);
          break;
       case ETAT_VIEW_DEMANDES_AMIS:
-         do_view_demandes_amis(c, choice, nbClient, clients);
+         do_view_demandes_amis(c, choice);
          break;
       case ETAT_REPONDRE_DEMANDE_AMI:
          do_repondre_demande_ami(c, choice, nbClient, clients);
@@ -694,7 +687,7 @@ static void do_action(Client * c, char * choice, int nbClient, Client clients[])
    printf("END DO ACTION \n");
 }
 
-static void send_look_players_to_client(Client *c, Client clientLooked) {
+void send_look_players_to_client(Client *c, Client clientLooked) {
    c->etat_courant = ETAT_LOOK_PLAYER;
 
    char buffer[BUF_SIZE * 2];
@@ -722,7 +715,7 @@ static void send_look_players_to_client(Client *c, Client clientLooked) {
    write_message_back(c->sock);
 }
 
-static void do_choose_player(Client * c, char * choice, int nbClient, Client * clients) {
+void do_choose_player(Client * c, char * choice, int nbClient, Client * clients) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -745,7 +738,7 @@ static void do_choose_player(Client * c, char * choice, int nbClient, Client * c
    send_all_players_to_client(c, nbClient, clients);
 }
 
-static void do_answer_defi(Client *c, char *choice) {
+void do_answer_defi(Client *c, char *choice) {
     if (!c->lookedPlayer) {
         write_client(c->sock, "Erreur : aucun défi sélectionné.\n");
         send_menu_to_client(c);
@@ -827,7 +820,7 @@ static void do_answer_defi(Client *c, char *choice) {
     }
 }
 
-static void do_choose_defis(Client * c, char * choice) {
+void do_choose_defis(Client * c, char * choice) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);      
@@ -853,7 +846,7 @@ static void do_choose_defis(Client * c, char * choice) {
 }
 
 
-static void do_look_player(Client * c, char * choice, int nbClient, Client * clients) {
+void do_look_player(Client * c, char * choice, int nbClient, Client * clients) {
    printf("Je suis dans do_look_player");
 
    // Retour au menu
@@ -925,7 +918,7 @@ static void do_look_player(Client * c, char * choice, int nbClient, Client * cli
    }
 }
 
-static void do_send_message(Client *c, char *choice) {
+void do_send_message(Client *c, char *choice) {
     if (!c->lookedPlayer) {
         write_client(c->sock, "Erreur : aucun joueur sélectionné.\n");
         send_menu_to_client(c);
@@ -966,7 +959,7 @@ static void do_send_message(Client *c, char *choice) {
     send_menu_to_client(c);
 }
 
-static void send_all_messages_to_client(Client *c) {
+void send_all_messages_to_client(Client *c) {
     if (c->nbMessages == 0) {
         write_client(c->sock, "Aucun message reçu.\n");
         send_menu_to_client(c);
@@ -1000,7 +993,7 @@ void notifier_fin_partie(Partie *p) {
     write_client(p->joueur1->sock, msg);
     write_client(p->joueur2->sock, msg);
     
-    // NOUVEAU : Notifier les spectateurs
+    //  Notifier les spectateurs
     notifier_spectateurs(p, msg);
     
     // Déconnecter les spectateurs
@@ -1017,7 +1010,7 @@ void notifier_fin_partie(Partie *p) {
     send_menu_to_client(p->joueur2);
 }
 
-static void afficher_infos_partie(Client * c, Partie * p) {
+void afficher_infos_partie(Client * c, Partie * p) {
    
    char msg[BUF_SIZE * 2];
    Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
@@ -1046,7 +1039,7 @@ static void afficher_infos_partie(Client * c, Partie * p) {
 /**
  * On récupère la partie choisie et on affiche les détails de la partie au joueur
  */
-static void do_choose_partie(Client *c, char *choice) {
+void do_choose_partie(Client *c, char *choice) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -1069,9 +1062,9 @@ static void do_choose_partie(Client *c, char *choice) {
 }
 
 /**
- * NOUVEAU : Gère l'état VIEW_HISTORIQUE (liste des parties)
+ *  Gère l'état VIEW_HISTORIQUE (liste des parties)
  */
-static void do_view_historique(Client *c, char *choice) {
+void do_view_historique(Client *c, char *choice) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -1092,9 +1085,9 @@ static void do_view_historique(Client *c, char *choice) {
 }
 
 /**
- * NOUVEAU : Gère l'état DETAIL_PARTIE_HISTORIQUE (détails d'une partie)
+ *  Gère l'état DETAIL_PARTIE_HISTORIQUE (détails d'une partie)
  */
-static void do_detail_partie_historique(Client *c, char *choice) {
+void do_detail_partie_historique(Client *c, char *choice) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -1127,7 +1120,7 @@ static void do_detail_partie_historique(Client *c, char *choice) {
 
 // ========== GESTION DES AMIS ==========
 
-static void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]) {
+void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -1169,7 +1162,7 @@ static void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]
    afficher_liste_amis(c, clients, nbClient);
 }
 
-static void do_view_demandes_amis(Client *c, char *choice, int nbClient, Client clients[]) {
+void do_view_demandes_amis(Client *c, char *choice) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -1197,7 +1190,7 @@ static void do_view_demandes_amis(Client *c, char *choice, int nbClient, Client 
    write_client(c->sock, "Numéro invalide. Tapez 'menu' pour retour.\n");
 }
 
-static void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]) {
+void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]) {
    // Retour au menu
    if (strcmp_menu(choice) == 0) {
       send_menu_to_client(c);
@@ -1232,7 +1225,7 @@ static void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Clien
    }
 }
 
-static void do_spectateur(Client *c, char *choice) {
+void do_spectateur(Client *c, char *choice) {
    // Quitter le mode spectateur
    if (strcmp_menu(choice) == 0) {
       quitter_mode_spectateur(c);
@@ -1245,7 +1238,7 @@ static void do_spectateur(Client *c, char *choice) {
    write_client(c->sock, "Mode spectateur : vous ne pouvez pas interagir. Tapez '/menu' pour quitter.\n");
 }
 
-static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
+void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    printf("Je suis dans do_menu");
    int num = atoi(choice);
    // TODO : Controler la valeur du choice;🤣
@@ -1268,12 +1261,12 @@ static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
          c->etat_courant = ETAT_VIEW_HISTORIQUE;
          break;
       case 6:
-         // NOUVEAU : Liste des amis
+         //  Liste des amis
          afficher_liste_amis(c, clients, nbClient);
          c->etat_courant = ETAT_VIEW_AMIS;
          break;
       case 7:
-         // NOUVEAU : Demandes d'amis
+         //  Demandes d'amis
          afficher_demandes_amis(c);
          c->etat_courant = ETAT_VIEW_DEMANDES_AMIS;
          break;
@@ -1287,7 +1280,7 @@ static void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
    }
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
    init();
 
