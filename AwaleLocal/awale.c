@@ -118,7 +118,7 @@ void logiqueJouer(Partie * p, int numJoueur, int indiceCaseJouee) {
 
     p->plateau[indiceCaseJouee] = 0;
 
-     //  Vérifie l’affamement avant capture 
+    // Vérifie l’affamement avant capture 
     if (captureAffameAdversaire(p, numJoueur, dernierIndice)) {
         printf("Coup affamant détecté : capture annulée.\n");
         p->indiceJoueurActuel = (p->indiceJoueurActuel % 2) + 1;
@@ -184,9 +184,13 @@ bool coupNourritAdversaire(Partie *p, int coup, int numJoueur, int adv) {
 bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
 
     if (!p->partieEnCours || numJoueur != p->indiceJoueurActuel ||
-    numJoueur == 1 && (indiceCaseJouee < 0 || indiceCaseJouee > 5) ||
-    numJoueur == 2 && (indiceCaseJouee < 6 || indiceCaseJouee > 11)) {
+    (numJoueur == 1 && (indiceCaseJouee < 0 || indiceCaseJouee > 5)) ||
+    (numJoueur == 2 && (indiceCaseJouee < 6 || indiceCaseJouee > 11))) {
         printf("Erreur, coup invalide !");
+        return false;
+    }
+
+    if (p->plateau[indiceCaseJouee] == 0) {
         return false;
     }
 

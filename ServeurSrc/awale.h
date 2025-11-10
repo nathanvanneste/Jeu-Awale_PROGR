@@ -25,7 +25,7 @@ typedef struct in_addr IN_ADDR;
 
 #include <stdbool.h>
 
-#define BUF_SIZE    1024
+#define BUF_SIZE 1024
 
 typedef enum {
    ETAT_INIT,      // vaut 0

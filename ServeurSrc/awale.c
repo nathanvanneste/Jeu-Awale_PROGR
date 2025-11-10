@@ -31,7 +31,7 @@ void init_partie(Client * joueur1, Client * joueur2, Partie * p)
         p->plateau[i] = 4;
     }
 
-    // NOUVEAU : Initialiser l'historique
+    // Initialiser l'historique
     p->historiqueCoups = NULL;
     p->nbCoupsJoues = 0;
     p->capaciteHistorique = 0;
@@ -41,7 +41,7 @@ void destroyPartie(Partie * p)
 {
     free(p->plateau);
     
-    // NOUVEAU : Libérer l'historique
+    // Libérer l'historique
     if (p->historiqueCoups) {
         free(p->historiqueCoups);
         p->historiqueCoups = NULL;
@@ -200,6 +200,10 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
         return false;
     }
 
+    if (p->plateau[indiceCaseJouee] == 0) {
+        return false;
+    }
+
     int adv = (numJoueur == 1) ? 2 : 1;
 
     if (campVide(p, adv) && !coupNourritAdversaire(p, indiceCaseJouee, numJoueur, adv)) {
@@ -207,12 +211,12 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
         return false;
     }
 
-    // NOUVEAU : Sauvegarder score avant pour calculer les captures
+    // Sauvegarder score avant pour calculer les captures
     int scoreAvant = (numJoueur == 1) ? p->cptJoueur1 : p->cptJoueur2;
 
     logiqueJouer(p, numJoueur, indiceCaseJouee);
 
-    // NOUVEAU : Enregistrer le coup dans l'historique
+    // Enregistrer le coup dans l'historique
     int scoreApres = (numJoueur == 1) ? p->cptJoueur1 : p->cptJoueur2;
     int grainesCapturees = scoreApres - scoreAvant;
     enregistrer_coup(p, numJoueur, indiceCaseJouee, grainesCapturees);
@@ -242,7 +246,7 @@ bool jouerCoup(Partie * p, int numJoueur, int indiceCaseJouee) {
         p->partieEnCours = false;
     }
 
-    // NOUVEAU : Si partie terminée, sauvegarder dans l'historique
+    // Si partie terminée, sauvegarder dans l'historique
     if (!p->partieEnCours) {
         PartieTerminee *hist = malloc(sizeof(PartieTerminee));
         if (hist) {
@@ -274,6 +278,9 @@ void afficherPlateau(const Partie *p)
     printf("--\n");
 }
 
+/**
+ * Créé un string contenant toutes les infos du plateau
+ */
 char *plateauToString(const Partie *p) {
     if (!p || !p->plateau) return "(partie invalide)";
 
@@ -328,76 +335,3 @@ char *plateauToString(const Partie *p) {
 
     return buffer;
 }
-
-
-
-
-/* int main()
-{
-    srand(time(NULL));
-    Partie p;
-
-    initPartie(&p, "TOTO", "RIGOLO");
-    p.partieEnCours = true;
-
-    p.plateau[11] = 1;
-    p.plateau[6] = 1;
-    //p.plateau[5] = 1;
-
-
-    printf("=== Bienvenue dans le jeu d'Awalé ===\n");
-    printf("Le sens de rotation est : %s\n",
-           p.sensRotation == -1 ? "horaire" : "anti-horaire");
-    printf("%s commence !\n", p.indiceJoueurActuel == 1 ? p.joueur1 : p.joueur2);
-
-    while (p.partieEnCours) {
-        afficherPlateau(&p);
-
-        int joueur = p.indiceJoueurActuel;
-        const char *nom = (joueur == 1) ? p.joueur1 : p.joueur2;
-        int debut = (joueur == 1) ? 0 : 6;
-        int fin = (joueur == 1) ? 5 : 11;
-
-        int caseChoisie = -1;
-        bool coupValide = false;
-
-        while (!coupValide) {
-            printf("\n%s (%s), choisissez une case à jouer [%d-%d] : ",
-                   nom, (joueur == 1) ? "Joueur 1" : "Joueur 2", debut, fin);
-            if (scanf("%d", &caseChoisie) != 1) {
-                while (getchar() != '\n'); // nettoyage buffer
-                continue;
-            }
-
-            if (caseChoisie < debut || caseChoisie > fin) {
-                printf("Case invalide, hors de votre camp.\n");
-                continue;
-            }
-
-            if (p.plateau[caseChoisie] == 0) {
-                printf("Case vide, choisissez une autre.\n");
-                continue;
-            }
-
-            coupValide = jouerCoup(&p, joueur, caseChoisie);
-            if (!coupValide) {
-                printf("Coup non valide selon les règles, réessayez.\n");
-            }
-        }
-    }
-
-    // Fin de partie
-    printf("\nPartie terminée !\n");
-    afficherPlateau(&p);
-    printf("Score final :\n");
-    printf("%s : %d graines\n", p.joueur1, p.cptJoueur1);
-    printf("%s : %d graines\n", p.joueur2, p.cptJoueur2);
-
-    if (p.cptJoueur1 > p.cptJoueur2)
-        printf("%s remporte la partie !\n", p.joueur1);
-    else if (p.cptJoueur2 > p.cptJoueur1)
-        printf("%s remporte la partie !\n", p.joueur2);
-    
-    destroyPartie(&p);
-    return 0;
-} */

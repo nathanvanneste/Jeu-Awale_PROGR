@@ -550,17 +550,17 @@ void do_partie_en_cours(Client *c, char *input) {
     while (*input == ' ' || *input == '\t' || *input == '\n') input++;
 
     // Vérifie si l’utilisateur veut revenir au menu
-    if (strcasecmp(input, "menu") == 0) {
-        write_client(c->sock, "Retour au menu principal...\n");
-        c->etat_courant = ETAT_MENU;
-        // On n'est plus "focus" sur une partie
-        c->partieEnCours = NULL;
-        send_menu_to_client(c);
-        return;
+    if (strcmp_menu(input) == 0) {
+         write_client(c->sock, "Retour au menu principal...\n");
+         c->etat_courant = ETAT_MENU;
+         // On n'est plus "focus" sur une partie
+         c->partieEnCours = NULL;
+         send_menu_to_client(c);
+         return;
     }
 
     // Vérifie si l’utilisateur veut envoyer un message
-    if (strcasecmp(input, "message") == 0) {
+    if (strcmp_message(input) == 0) {
         Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
         if (!adv) {
             write_client(c->sock, "Erreur : adversaire introuvable.\n");
@@ -570,7 +570,6 @@ void do_partie_en_cours(Client *c, char *input) {
         c->lookedPlayer = adv;
         c->etat_courant = ETAT_SEND_MESSAGE;
         write_client(c->sock, "Entrez le message à envoyer à votre adversaire :\n");
-        //do_look_player(c, 2);
         return;
     }
 
@@ -586,9 +585,9 @@ void do_partie_en_cours(Client *c, char *input) {
 
     // Validation et exécution du coup
     if (!jouerCoup(p, numJoueur, caseChoisie)) {
-      //TODO : retourner un état dans jouerCoup pour afficher le bon message d'erreur.
-        write_client(c->sock, "Coup invalide. Réessayez :\n");
-        return;
+         // TODO : retourner un état dans jouerCoup pour afficher le bon message d'erreur.
+         write_client(c->sock, "Coup invalide. Réessayez :\n");
+         return;
     }
 
     // Notifie les deux joueurs
@@ -623,23 +622,18 @@ void do_read_messages(Client * c, char * choice) {
    write_client(c->sock, "Invalide. Pour le moment il n'y a pas d'autre choix que de retourner au menu.\n");
 }
 
+/**
+ * Déclenche le bon comportement selon l'état actuel du client
+ */
 void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
-   printf("Nombre de client do action: %d \n", nbClient);
-   printf("DO ACTION, %d\n", c->etat_courant);
-   printf("CHOICE : %s \n", choice);
    switch (c->etat_courant) {
       case ETAT_INIT :
-         printf("etat init");
          break;
       case ETAT_MENU :
-         printf("etat menu");
          do_menu(c, choice, nbClient, clients);
-
          break;
-
       case ETAT_CHOOSE_PLAYER :
          do_choose_player(c, choice, nbClient, clients);
-         
          break;
       case ETAT_LOOK_PLAYER :
          do_look_player(c, choice, nbClient, clients);
@@ -681,12 +675,13 @@ void do_action(Client * c, char * choice, int nbClient, Client clients[]) {
          do_spectateur(c, choice);
          break;
       default:
-         printf("default");
          break;
    }
-   printf("END DO ACTION \n");
 }
 
+/**
+ * Affiche le menu de sélection lorsqu'on est en mode focus sur le joueur
+ */
 void send_look_players_to_client(Client *c, Client clientLooked) {
    c->etat_courant = ETAT_LOOK_PLAYER;
 
