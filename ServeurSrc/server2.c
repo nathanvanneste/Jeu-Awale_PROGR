@@ -1099,7 +1099,7 @@ void do_detail_partie_historique(Client *c, char *choice) {
    }
    
    // Replay de la partie
-   if (strcasecmp(choice, "replay") == 0) {
+   if (strcasecmp(choice, "replay") == 0 || strcasecmp(choice, "/replay") == 0) {
       if (c->indicePartieVisionnee >= 0 && 
           c->indicePartieVisionnee < c->nbPartiesHistorique) {
          
@@ -1112,7 +1112,7 @@ void do_detail_partie_historique(Client *c, char *choice) {
       return;
    }
    
-   write_client(c->sock, "Commande non reconnue. ('menu', 'retour' ou 'replay')\n");
+   write_client(c->sock, "Commande non reconnue. ('menu', 'retour' ou '/replay')\n");
 }
 
 // ========== GESTION DES AMIS ==========
