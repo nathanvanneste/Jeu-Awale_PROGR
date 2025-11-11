@@ -102,6 +102,8 @@ typedef struct
    char * contenu;
 }Message;
 
+#define NB_MAX_DEMANDE_AMI 50
+#define NB_MAX_AMI 100
 typedef struct Client
 {
    SOCKET sock;
@@ -122,9 +124,9 @@ typedef struct Client
    int indicePartieVisionnee;        // pour navigation dans détails
 
    // Système d'amis
-   char amis[100][BUF_SIZE];         // liste des amis (noms)
+   struct Client * amis[NB_MAX_DEMANDE_AMI];         // liste des amis (noms)
    int nbAmis;
-   char demandesAmisRecues[50][BUF_SIZE];  // demandes reçues (noms des demandeurs)
+   struct Client * demandesAmisRecues[NB_MAX_DEMANDE_AMI];  // demandes reçues (noms des demandeurs)
    int nbDemandesAmisRecues;
 
    // Mode spectateur

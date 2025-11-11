@@ -48,7 +48,7 @@ void write_message_menu(SOCKET sock) {
    write_client(sock, buffer);
 }
 
-int strcmp_menu(const char * str) {
+int strcasecmp_menu(const char * str) {
    return strcasecmp(str, CMD_MENU);
 }
 
@@ -59,7 +59,7 @@ void write_message_message(SOCKET sock) {
    write_client(sock, buffer);
 }
 
-int strcmp_message(const char * str) {
+int strcasecmp_message(const char * str) {
    return strcasecmp(str, CMD_MESSAGE);
 }
 
@@ -70,6 +70,6 @@ void write_message_back(SOCKET sock) {
    write_client(sock, buffer);
 }
 
-int strcmp_back(const char * str) {
+int strcasecmp_back(const char * str) {
    return strcasecmp(str, CMD_BACK);
 }

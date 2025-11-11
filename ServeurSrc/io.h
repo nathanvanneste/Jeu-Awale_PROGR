@@ -31,10 +31,10 @@ void write_client(SOCKET sock, const char *buffer);
 int read_client(SOCKET sock, char *buffer);
 
 void write_message_menu(SOCKET sock);
-int strcmp_menu(const char * str);
+int strcasecmp_menu(const char * str);
 void write_message_message(SOCKET sock);
-int strcmp_message(const char * str);
+int strcasecmp_message(const char * str);
 void write_message_back(SOCKET sock);
-int strcmp_back(const char * str);
+int strcasecmp_back(const char * str);
 
 #endif

@@ -133,12 +133,12 @@ void afficher_historique_parties(Client *c) {
         PartieTerminee *p = c->historique[i];
         if (!p) continue;
         
-        const char *adv = (strcmp(p->nomJoueur1, c->name) == 0) ? p->nomJoueur2 : p->nomJoueur1;
-        int scoreJ = (strcmp(p->nomJoueur1, c->name) == 0) ? p->scoreJoueur1 : p->scoreJoueur2;
-        int scoreA = (strcmp(p->nomJoueur1, c->name) == 0) ? p->scoreJoueur2 : p->scoreJoueur1;
+        const char *adv = (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->nomJoueur2 : p->nomJoueur1;
+        int scoreJ = (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->scoreJoueur1 : p->scoreJoueur2;
+        int scoreA = (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->scoreJoueur2 : p->scoreJoueur1;
         
-        const char *resultat = (strcmp(p->vainqueur, "Égalité") == 0) ? "=" :
-                               (strcmp(p->vainqueur, c->name) == 0) ? "V" : "D";
+        const char *resultat = (strcasecmp(p->vainqueur, "Égalité") == 0) ? "=" :
+                               (strcasecmp(p->vainqueur, c->name) == 0) ? "V" : "D";
         
         snprintf(buffer, sizeof(buffer),
                  "%d. vs %-15s | %2d-%2d | %s | %d coups\n",
@@ -169,7 +169,7 @@ void afficher_detail_partie_historique(Client *c, int indice) {
              "Score : %d - %d\n"
              "Vainqueur : %s\n"
              "Coups joués : %d\n\n",
-             (strcmp(p->nomJoueur1, c->name) == 0) ? p->nomJoueur2 : p->nomJoueur1,
+             (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->nomJoueur2 : p->nomJoueur1,
              p->nomJoueur1, p->nomJoueur2,
              p->scoreJoueur1, p->scoreJoueur2,
              p->vainqueur, p->nbCoups);

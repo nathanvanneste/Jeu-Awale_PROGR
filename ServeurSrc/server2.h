@@ -33,7 +33,7 @@ void do_view_historique(Client *c, char *choice);
 void do_detail_partie_historique(Client *c, char *choice);
 void do_view_amis(Client *c, char *choice, int nbClient, Client clients[]);
 void do_view_demandes_amis(Client *c, char *choice);
-void do_repondre_demande_ami(Client *c, char *choice, int nbClient, Client clients[]);
+void do_repondre_demande_ami(Client *c, char *choice);
 void do_spectateur(Client *c, char *choice);
 void do_edit_bio(Client *c, char *choice);
 void init(void);
@@ -44,6 +44,7 @@ void end_connection(int sock);
 
 void clear_clients(Client *clients, int actual);
 
+void send_look_players_to_client(Client *c);
 void send_menu_to_client(Client * c);
 void send_all_defis_to_client(Client * c);
 

@@ -12,24 +12,25 @@ void envoyer_demande_ami(Client *demandeur, Client *destinataire) {
     if (!demandeur || !destinataire) return;
     
     // Vérifier si déjà ami
-    if (est_ami(demandeur, destinataire->name)) {
+    if (est_ami(demandeur, destinataire)) {
         write_client(demandeur->sock, "Ce joueur est déjà votre ami.\n");
         return;
     }
     
     // Vérifier si demande déjà envoyée
     for (int i = 0; i < destinataire->nbDemandesAmisRecues; i++) {
-        if (strcmp(destinataire->demandesAmisRecues[i], demandeur->name) == 0) {
+        if (strcasecmp(destinataire->demandesAmisRecues[i]->name, demandeur->name) == 0) {
             write_client(demandeur->sock, "Demande déjà envoyée à ce joueur.\n");
             return;
         }
     }
     
     // Ajouter la demande
-    if (destinataire->nbDemandesAmisRecues < 50) {
-        strncpy(destinataire->demandesAmisRecues[destinataire->nbDemandesAmisRecues], 
-                demandeur->name, BUF_SIZE - 1);
-        destinataire->demandesAmisRecues[destinataire->nbDemandesAmisRecues][BUF_SIZE - 1] = '\0';
+    if (destinataire->nbDemandesAmisRecues < NB_MAX_DEMANDE_AMI) {
+//        strncpy(destinataire->demandesAmisRecues[destinataire->nbDemandesAmisRecues], 
+  //              demandeur->name, BUF_SIZE - 1);
+        destinataire->demandesAmisRecues[destinataire->nbDemandesAmisRecues] = demandeur;
+    //    destinataire->demandesAmisRecues[destinataire->nbDemandesAmisRecues][BUF_SIZE - 1] = '\0';
         destinataire->nbDemandesAmisRecues++;
         
         char buffer[BUF_SIZE];
@@ -48,13 +49,13 @@ void envoyer_demande_ami(Client *demandeur, Client *destinataire) {
 }
 
 // ========== FONCTION 2 : Accepter une demande d'ami ==========
-void accepter_demande_ami(Client *c, const char *nomDemandeur, Client clients[], int nbClients) {
-    if (!c || !nomDemandeur) return;
+void accepter_demande_ami(Client * c, Client * demandeur) {
+    if (!c || !demandeur) return;
     
     // Trouver la demande
     int indexDemande = -1;
     for (int i = 0; i < c->nbDemandesAmisRecues; i++) {
-        if (strcmp(c->demandesAmisRecues[i], nomDemandeur) == 0) {
+        if (strcasecmp(c->demandesAmisRecues[i]->name, demandeur->name) == 0) {
             indexDemande = i;
             break;
         }
@@ -66,53 +67,37 @@ void accepter_demande_ami(Client *c, const char *nomDemandeur, Client clients[],
     }
     
     // Ajouter dans les deux listes d'amis
-    if (c->nbAmis < 100) {
-        strncpy(c->amis[c->nbAmis], nomDemandeur, BUF_SIZE - 1);
-        c->amis[c->nbAmis][BUF_SIZE - 1] = '\0';
-        c->nbAmis++;
-    }
-    
-    // Trouver le demandeur et ajouter la relation réciproque
-    Client *demandeur = NULL;
-    for (int i = 0; i < nbClients; i++) {
-        if (strcmp(clients[i].name, nomDemandeur) == 0) {
-            demandeur = &clients[i];
-            break;
-        }
-    }
-    
-    if (demandeur && demandeur->nbAmis < 100) {
-        strncpy(demandeur->amis[demandeur->nbAmis], c->name, BUF_SIZE - 1);
-        demandeur->amis[demandeur->nbAmis][BUF_SIZE - 1] = '\0';
-        demandeur->nbAmis++;
+    if (c->nbAmis < NB_MAX_AMI && demandeur->nbAmis < NB_MAX_AMI) {
+        c->amis[c->nbAmis++] = demandeur;
+
+        demandeur->amis[demandeur->nbAmis++] = c;
         
         // Notifier le demandeur
         char buffer[BUF_SIZE];
         snprintf(buffer, sizeof(buffer), 
                  "\n[AMI] %s a accepté votre demande d'ami !\n", c->name);
         write_client(demandeur->sock, buffer);
+
+        snprintf(buffer, sizeof(buffer), 
+        "Vous êtes maintenant ami avec %s !\n", demandeur->name);
+        write_client(c->sock, buffer);
     }
     
     // Supprimer la demande
     for (int i = indexDemande; i < c->nbDemandesAmisRecues - 1; i++) {
-        strcpy(c->demandesAmisRecues[i], c->demandesAmisRecues[i + 1]);
+        c->demandesAmisRecues[i] = c->demandesAmisRecues[i + 1];
     }
     c->nbDemandesAmisRecues--;
-    
-    char buffer[BUF_SIZE];
-    snprintf(buffer, sizeof(buffer), 
-             "Vous êtes maintenant ami avec %s !\n", nomDemandeur);
-    write_client(c->sock, buffer);
 }
 
 // ========== FONCTION 3 : Refuser une demande d'ami ==========
-void refuser_demande_ami(Client *c, const char *nomDemandeur) {
-    if (!c || !nomDemandeur) return;
+void refuser_demande_ami(Client *c, Client * demandeur) {
+    if (!c || !demandeur) return;
     
     // Trouver et supprimer la demande
     int indexDemande = -1;
     for (int i = 0; i < c->nbDemandesAmisRecues; i++) {
-        if (strcmp(c->demandesAmisRecues[i], nomDemandeur) == 0) {
+        if (strcasecmp(c->demandesAmisRecues[i]->name, demandeur->name) == 0) {
             indexDemande = i;
             break;
         }
@@ -125,22 +110,22 @@ void refuser_demande_ami(Client *c, const char *nomDemandeur) {
     
     // Supprimer la demande
     for (int i = indexDemande; i < c->nbDemandesAmisRecues - 1; i++) {
-        strcpy(c->demandesAmisRecues[i], c->demandesAmisRecues[i + 1]);
+        c->demandesAmisRecues[i] = c->demandesAmisRecues[i + 1];
     }
     c->nbDemandesAmisRecues--;
     
     char buffer[BUF_SIZE];
     snprintf(buffer, sizeof(buffer), 
-             "Demande d'ami de %s refusée.\n", nomDemandeur);
+             "Demande d'ami de %s refusée.\n", demandeur->name);
     write_client(c->sock, buffer);
 }
 
 // ========== FONCTION 4 : Vérifier si deux joueurs sont amis ==========
-bool est_ami(Client *c, const char *nomAutre) {
-    if (!c || !nomAutre) return false;
+bool est_ami(Client *c, Client * autre) {
+    if (!c || !autre) return false;
     
     for (int i = 0; i < c->nbAmis; i++) {
-        if (strcmp(c->amis[i], nomAutre) == 0) {
+        if (strcasecmp(c->amis[i]->name, autre->name) == 0) {
             return true;
         }
     }
@@ -148,7 +133,7 @@ bool est_ami(Client *c, const char *nomAutre) {
 }
 
 // ========== FONCTION 5 : Afficher la liste des amis en ligne ==========
-void afficher_liste_amis(Client *c, Client clients[], int nbClients) {
+void afficher_liste_amis(Client *c) {
     if (!c) return;
     
     char buffer[BUF_SIZE * 2];
@@ -170,43 +155,38 @@ void afficher_liste_amis(Client *c, Client clients[], int nbClients) {
     
     // Parcourir la liste des amis
     for (int i = 0; i < c->nbAmis; i++) {
-        bool enLigne = false;
-        
+        // ami courant
+        Client * current = c->amis[i];
         // Vérifier si l'ami est connecté
-        for (int j = 0; j < nbClients; j++) {
-            if (strcmp(clients[j].name, c->amis[i]) == 0 && clients[j].connecte) {
-                enLigne = true;
-                
-                // Afficher l'état de l'ami
-                const char *statut = "Disponible";
-                bool enPartie = false;
-                
-                if (clients[j].etat_courant == ETAT_PARTIE_EN_COURS) {
-                    statut = "En partie";
-                    enPartie = true;
-                } else if (clients[j].etat_courant == ETAT_CHOOSE_PLAYER ||
-                           clients[j].etat_courant == ETAT_LOOK_PLAYER) {
-                    statut = "Cherche un adversaire";
-                }
-                
-                if (enPartie) {
-                    // Afficher avec numéro pour permettre de spectater
-                    snprintf(buffer, sizeof(buffer), 
-                             "  %d. %s - [EN LIGNE] %s 🎮 [Spectater disponible]\n", 
-                             numeroAffichage++, c->amis[i], statut);
-                } else {
-                    snprintf(buffer, sizeof(buffer), 
-                             "  ✓ %s - [EN LIGNE] %s\n", c->amis[i], statut);
-                }
-                write_client(c->sock, buffer);
-                amisEnLigne++;
-                break;
-            }
-        }
         
-        if (!enLigne) {
+        if (current->connecte) {  
+            // Afficher l'état de l'ami
+            const char *statut = "Disponible";
+            bool enPartie = false;
+                
+            if (current->etat_courant == ETAT_PARTIE_EN_COURS) {
+                statut = "En partie";
+                enPartie = true;
+            } else if (current->etat_courant == ETAT_CHOOSE_PLAYER ||
+                current->etat_courant == ETAT_LOOK_PLAYER) {
+                statut = "Cherche un adversaire";
+            }
+                
+            if (enPartie) {
+                // Afficher avec numéro pour permettre de spectater
+                snprintf(buffer, sizeof(buffer), 
+                    "  %d. %s - [EN LIGNE] %s [Spectater disponible]\n", 
+                    numeroAffichage++, current->name, statut);
+            } else {
+                snprintf(buffer, sizeof(buffer), 
+                   "  ✓ %s - [EN LIGNE] %s\n", current->name, statut);
+            }
+            write_client(c->sock, buffer);
+            amisEnLigne++;
+            break;
+        } else {
             snprintf(buffer, sizeof(buffer), 
-                     "  • %s - [Hors ligne]\n", c->amis[i]);
+                "  • %s - [Hors ligne]\n", current->name);
             write_client(c->sock, buffer);
             amisHorsLigne++;
         }
@@ -217,10 +197,11 @@ void afficher_liste_amis(Client *c, Client clients[], int nbClients) {
     write_client(c->sock, buffer);
     
     if (numeroAffichage > 1) {
-        write_client(c->sock, "\nTapez un numéro pour spectater une partie, '/menu' pour retour\n");
+        write_client(c->sock, "\nTapez un numéro pour spectater une partie.\n");
     } else {
-        write_client(c->sock, "\nAucun ami en partie à spectater. Tapez '/menu' pour retour\n");
+        write_client(c->sock, "\nAucun ami en partie à spectater.\n");
     }
+    write_message_menu(c->sock);
 }
 
 // ========== FONCTION 6 : Afficher les demandes d'amis reçues ==========
@@ -241,7 +222,7 @@ void afficher_demandes_amis(Client *c) {
     
     for (int i = 0; i < c->nbDemandesAmisRecues; i++) {
         snprintf(buffer, sizeof(buffer), 
-                 "  %d. %s\n", i + 1, c->demandesAmisRecues[i]);
+                 "  %d. %s\n", i + 1, c->demandesAmisRecues[i]->name);
         write_client(c->sock, buffer);
     }
     

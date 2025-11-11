@@ -7,16 +7,16 @@
 void envoyer_demande_ami(Client *demandeur, Client *destinataire);
 
 // ========== FONCTION 2 : Accepter une demande d'ami ==========
-void accepter_demande_ami(Client *c, const char *nomDemandeur, Client clients[], int nbClients);
+void accepter_demande_ami(Client *c, Client * demandeur);
 
 // ========== FONCTION 3 : Refuser une demande d'ami ==========
-void refuser_demande_ami(Client *c, const char *nomDemandeur);
+void refuser_demande_ami(Client *c, Client * demandeur);
 
 // ========== FONCTION 4 : Vérifier si deux joueurs sont amis ==========
-bool est_ami(Client *c, const char *nomAutre);
+bool est_ami(Client *c, Client * autre);
 
 // ========== FONCTION 5 : Afficher la liste des amis en ligne ==========
-void afficher_liste_amis(Client *c, Client clients[], int nbClients);
+void afficher_liste_amis(Client *c);
 
 // ========== FONCTION 6 : Afficher les demandes d'amis reçues ==========
 void afficher_demandes_amis(Client *c);
