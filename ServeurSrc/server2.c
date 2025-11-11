@@ -843,10 +843,10 @@ void do_send_message(Client *c, char *choice) {
     }
 
     // Création du message
-    Message *m = malloc(sizeof(Message));
-    m->expediteur = strdup(c->name);
-    m->destinataire = strdup(c->lookedPlayer->name);
-    m->contenu = strdup(choice);
+    Message m;
+    m.expediteur = c;
+    m.destinataire = c->lookedPlayer;
+   strcpy(m.contenu, choice);
 
     Client *dest = c->lookedPlayer;
     dest->messages[dest->nbMessages++] = m;
@@ -878,9 +878,9 @@ void send_all_messages_to_client(Client *c) {
 
     char buffer[BUF_SIZE * 4] = "== Vos messages ==\n";
     for (int i = 0; i < c->nbMessages; ++i) {
-        Message *m = c->messages[i];
+        Message m = c->messages[i];
         char ligne[BUF_SIZE];
-        snprintf(ligne, sizeof(ligne), "De %s : %s\n", m->expediteur, m->contenu);
+        snprintf(ligne, sizeof(ligne), "De %s : %s\n", m.expediteur->name, m.contenu);
         strcat(buffer, ligne);
     }
 
@@ -925,7 +925,7 @@ void afficher_infos_partie(Client * c, Partie * p) {
    char msg[BUF_SIZE * 2];
    Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
    
-   char plateau[1024];
+   char plateau[BUF_SIZE];
    plateauToString(p, plateau, sizeof(plateau));
 
    snprintf(msg, sizeof(msg),
@@ -1133,7 +1133,7 @@ void do_repondre_demande_ami(Client *c, char *choice) {
       c->indicePartieVisionnee = -1;
       send_menu_to_client(c);
    } else {
-      write_client(c->sock, "Réponse invalide. Tapez 'oui', 'non', 'menu' ou 'retour'.\n");
+      write_client(c->sock, "Réponse invalide. Tapez 'oui', 'non', '/menu' ou '/retour'.\n");
    }
 }
 
@@ -1158,8 +1158,8 @@ void do_edit_bio(Client *c, char *choice) {
    }
    
    // Limiter la taille de la bio
-   if (strlen(choice) > 500) {
-      write_client(c->sock, "Biographie trop longue (max 500 caractères). Réessayez :\n");
+   if (strlen(choice) > BUF_SIZE) {
+      write_client(c->sock, "Biographie trop longue (max 1000 caractères). Réessayez :\n");
       return;
    }
    
@@ -1172,7 +1172,6 @@ void do_edit_bio(Client *c, char *choice) {
 }
 
 void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
-   printf("Je suis dans do_menu");
    int num = atoi(choice);
 
    switch (num) {
@@ -1206,7 +1205,7 @@ void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
       case 8:
          // Définir sa biographie
          c->etat_courant = ETAT_EDIT_BIO;
-         write_client(c->sock, "Entrez votre biographie (max 500 caractères) :\n");
+         write_client(c->sock, "Entrez votre biographie (max 1000 caractères) :\n");
          break;
       case 9:
          deconnecter_client(c);

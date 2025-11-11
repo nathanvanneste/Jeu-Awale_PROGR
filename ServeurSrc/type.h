@@ -97,26 +97,29 @@ typedef struct {
 
 typedef struct
 {
-   char * expediteur;
-   char * destinataire;
-   char * contenu;
+   Client * expediteur;
+   Client * destinataire;
+   char contenu[BUF_SIZE];
 }Message;
 
+#define NB_MAX_DEMANDE_DEFI 1024
+#define NB_MAX_PARTIE 1024
 #define NB_MAX_DEMANDE_AMI 50
 #define NB_MAX_AMI 100
+#define NB_MESSAGE 256
 typedef struct Client
 {
    SOCKET sock;
    struct Client * lookedPlayer;
    char name[BUF_SIZE];
    Etat etat_courant;
-   Partie * parties[1024];
+   Partie * parties[NB_MAX_PARTIE];
    int indiceParties;
    Partie * partieEnCours;
-   Client * defisReceive[1024];
+   Client * defisReceive[NB_MAX_DEMANDE_DEFI];
    int indiceDefis;
 
-   Message *messages[256];
+   Message messages[NB_MESSAGE];
    int nbMessages;
 
    PartieTerminee *historique[256];  // historique des parties terminées
@@ -133,7 +136,7 @@ typedef struct Client
    Partie *partieSpectatee;          // partie que le client regarde en spectateur (NULL si pas spectateur)
 
    // Biographie
-   char bio[512];                    // biographie du joueur
+   char bio[BUF_SIZE];                    // biographie du joueur
 
    bool connecte;
 }Client;
