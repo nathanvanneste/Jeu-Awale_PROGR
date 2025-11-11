@@ -70,14 +70,13 @@ typedef struct Partie
    int indiceJoueurActuel;
    int sensRotation;
    bool partieEnCours;
-   char ** observers;
    
    // Spectateurs
-   struct Client *spectateurs[NB_SPECTATEUR_MAX];  // max 20 spectateurs par partie
+   struct Client * spectateurs[NB_SPECTATEUR_MAX];  // max 32 spectateurs par partie
    int nbSpectateurs;
    
    // Historique
-   CoupHistorique *historiqueCoups;
+   CoupHistorique * historiqueCoups;
    int nbCoupsJoues;
    int capaciteHistorique;
 }Partie;

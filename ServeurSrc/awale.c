@@ -38,6 +38,9 @@ void init_partie(Client * joueur1, Client * joueur2, Partie * p)
 
     // Init spec
     p->nbSpectateurs = 0;
+    for (int i = 0; i < NB_SPECTATEUR_MAX ; ++i) {
+        p->spectateurs[i] = NULL;
+    }
 }
 
 void destroyPartie(Partie * p)
