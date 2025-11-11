@@ -80,12 +80,18 @@ typedef struct Partie
    int capaciteHistorique;
 }Partie;
 
+typedef enum {
+   EGALITE,      // vaut 0
+   JOUEUR1,  // vaut 1
+   JOUEUR2 // vaut 2
+} Resultat;
+
 typedef struct {
-    char nomJoueur1[BUF_SIZE];
-    char nomJoueur2[BUF_SIZE];
+    Client * joueur1;
+    Client * joueur2;
     int scoreJoueur1;
     int scoreJoueur2;
-    char vainqueur[BUF_SIZE];  // nom du gagnant ou "Égalité"
+    Resultat vainqueur;  // 1 pour joueur1, 2 pour joueur2, 0 si égalité via le type enum
     time_t dateDebut;
     time_t dateFin;
     int sensRotation;          // pour pouvoir rejouer
@@ -122,7 +128,7 @@ typedef struct Client
    Message messages[NB_MESSAGE];
    int nbMessages;
 
-   PartieTerminee *historique[256];  // historique des parties terminées
+   PartieTerminee *historique[NB_MAX_PARTIE];  // historique des parties terminées
    int nbPartiesHistorique;
    int indicePartieVisionnee;        // pour navigation dans détails
 

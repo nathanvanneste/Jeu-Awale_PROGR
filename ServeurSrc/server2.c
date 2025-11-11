@@ -12,6 +12,9 @@
 #include "historique.h"
 #include "amis.h"
 
+/**
+ * Retourne le pointeur du client qui a le nom passé en paramètre
+ */
 Client *find_client_by_name(Client *clients, int nbClients, const char *name) {
     for (int i = 0; i < nbClients; i++) {
         if (strcasecmp(clients[i].name, name) == 0) {
@@ -21,6 +24,9 @@ Client *find_client_by_name(Client *clients, int nbClients, const char *name) {
     return NULL;
 }
 
+/**
+ * Ferme la socket associée au client mais le laisse dans la liste des clients pour une éventuelle reconnexion
+ */
 void deconnecter_client(Client *c) {
    if (!c) {
       return;
@@ -38,6 +44,9 @@ void deconnecter_client(Client *c) {
    c->sock = -1;
 }
 
+/**
+ * Initialisation du serveur
+ */
 void init(void) {
 #ifdef WIN32
    WSADATA wsa;
@@ -50,12 +59,18 @@ void init(void) {
 #endif
 }
 
+/**
+ * Fermeture du serveur
+ */
 void end(void) {
 #ifdef WIN32
    WSACleanup();
 #endif
 }
 
+/**
+ * Lancement et code logique du serveur
+ */
 void app(void) {
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
@@ -229,7 +244,9 @@ void app(void) {
    end_connection(sock);
 }
 
-
+/**
+ * Ferme toutes les sockets de comm (socket du client)
+ */
 void clear_clients(Client *clients, int actual)
 {
    int i = 0;
@@ -239,6 +256,9 @@ void clear_clients(Client *clients, int actual)
    }
 }
 
+/**
+ * Création de la socket d'écoute
+ */
 int init_connection(void)
 {
    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);

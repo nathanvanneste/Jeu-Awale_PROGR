@@ -41,17 +41,21 @@ void enregistrer_coup(Partie *p, int numJoueur, int caseJouee, int grainesCaptur
 void finaliser_partie_historique(Partie *p, PartieTerminee *hist) {
     if (!p || !hist) return;
     
-    strncpy(hist->nomJoueur1, p->joueur1->name, BUF_SIZE - 1);
-    strncpy(hist->nomJoueur2, p->joueur2->name, BUF_SIZE - 1);
+    hist->joueur1 = p->joueur1;
+    hist->joueur2 = p->joueur2;
+
     hist->scoreJoueur1 = p->cptJoueur1;
     hist->scoreJoueur2 = p->cptJoueur2;
     
     if (p->cptJoueur1 > p->cptJoueur2) {
-        strncpy(hist->vainqueur, p->joueur1->name, BUF_SIZE - 1);
+     //   strncpy(hist->vainqueur, p->joueur1->name, BUF_SIZE - 1);
+        hist->vainqueur = JOUEUR1;
     } else if (p->cptJoueur2 > p->cptJoueur1) {
-        strncpy(hist->vainqueur, p->joueur2->name, BUF_SIZE - 1);
+        //strncpy(hist->vainqueur, p->joueur2->name, BUF_SIZE - 1);
+        hist->vainqueur = JOUEUR2;
     } else {
-        strncpy(hist->vainqueur, "Égalité", BUF_SIZE - 1);
+        //strncpy(hist->vainqueur, "Égalité", BUF_SIZE - 1);
+        hist->vainqueur = EGALITE;
     }
     
     hist->sensRotation = p->sensRotation;
@@ -132,13 +136,24 @@ void afficher_historique_parties(Client *c) {
     for (int i = 0; i < c->nbPartiesHistorique; i++) {
         PartieTerminee *p = c->historique[i];
         if (!p) continue;
+
+        char * adv;
+        int scoreJ, scoreA;
+        Resultat numJoueur;
+        if (strcasecmp(p->joueur1->name, c->name) == 0) {
+            adv = p->joueur2->name;
+            scoreJ = p->scoreJoueur1;
+            scoreA = p->scoreJoueur2;
+            numJoueur = JOUEUR1;
+        } else {
+            adv = p->joueur1->name;
+            scoreJ = p->scoreJoueur2;
+            scoreA = p->scoreJoueur1;
+            numJoueur = JOUEUR2;
+        }
         
-        const char *adv = (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->nomJoueur2 : p->nomJoueur1;
-        int scoreJ = (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->scoreJoueur1 : p->scoreJoueur2;
-        int scoreA = (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->scoreJoueur2 : p->scoreJoueur1;
-        
-        const char *resultat = (strcasecmp(p->vainqueur, "Égalité") == 0) ? "=" :
-                               (strcasecmp(p->vainqueur, c->name) == 0) ? "V" : "D";
+        const char * resultat = (p->vainqueur == EGALITE) ? "=" :
+                               (p->vainqueur == numJoueur) ? "V" : "D";
         
         snprintf(buffer, sizeof(buffer),
                  "%d. vs %-15s | %2d-%2d | %s | %d coups\n",
@@ -169,10 +184,12 @@ void afficher_detail_partie_historique(Client *c, int indice) {
              "Score : %d - %d\n"
              "Vainqueur : %s\n"
              "Coups joués : %d\n\n",
-             (strcasecmp(p->nomJoueur1, c->name) == 0) ? p->nomJoueur2 : p->nomJoueur1,
-             p->nomJoueur1, p->nomJoueur2,
+             (strcasecmp(p->joueur1->name, c->name) == 0) ? p->joueur2->name : p->joueur1->name,
+             p->joueur1->name, p->joueur2->name,
              p->scoreJoueur1, p->scoreJoueur2,
-             p->vainqueur, p->nbCoups);
+             (p->vainqueur == EGALITE ? "Egalite" : 
+                (p->vainqueur == JOUEUR1 ? p->joueur1->name : p->joueur2->name)), 
+             p->nbCoups);
     write_client(c->sock, buffer);
     
     if (p->nbCoups > 0) {
@@ -206,7 +223,7 @@ void rejouer_partie_en_accelere(Client *client, PartieTerminee *hist) {
     snprintf(buffer, sizeof(buffer), "\n=== REPLAY ===\n");
     write_client(client->sock, buffer);
     
-    snprintf(buffer, sizeof(buffer), "%s vs %s\n", hist->nomJoueur1, hist->nomJoueur2);
+    snprintf(buffer, sizeof(buffer), "%s vs %s\n", hist->joueur1->name, hist->joueur2->name);
     write_client(client->sock, buffer);
     
     for (int i = 0; i < hist->nbCoups; i++) {
