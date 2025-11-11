@@ -62,13 +62,21 @@ void copyPartie(Partie * toCopy, Partie * cp)
     cp->cptJoueur1 = toCopy->cptJoueur1;
     cp->cptJoueur2 = toCopy->cptJoueur2;
 
-    cp->plateau = calloc(12, sizeof(int));
     for (int i = 0; i < 12 ; ++i) {
         cp->plateau[i] = toCopy->plateau[i];
     }
 
     cp->joueur1 = toCopy->joueur1;
     cp->joueur2 = toCopy->joueur2;
+
+    cp->nbCoupsJoues = toCopy->nbCoupsJoues;
+    cp->capaciteHistorique = toCopy->capaciteHistorique;
+
+    cp->nbSpectateurs = toCopy->nbSpectateurs;
+
+    for (int i = 0 ; i < cp->nbSpectateurs ; ++i) {
+        cp->spectateurs[i] = toCopy->spectateurs[i];
+    }
 }
 
 bool campVide(const Partie *p, int joueur) {
@@ -284,7 +292,7 @@ void afficherPlateau(const Partie *p)
  * Créé un string contenant toutes les infos du plateau
  */
 void plateauToString(const Partie *p, char * buffer, int taillePlateau) {
-    if (!p || !p->plateau) return;
+    if (!p) return;
 
     int offset = 0;
 
