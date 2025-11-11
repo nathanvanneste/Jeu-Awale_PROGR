@@ -3,8 +3,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include "amis.h"
+#include "io.h"
 #include "awale.h"
-#include "server2.h"
 
 // ========== FONCTION 1 : Envoyer une demande d'ami ==========
 void envoyer_demande_ami(Client *demandeur, Client *destinataire) {
@@ -288,7 +289,8 @@ bool rejoindre_comme_spectateur(Client *spectateur, Partie *partie) {
     write_client(spectateur->sock, buffer);
     
     // Afficher le plateau actuel
-    char *plateauStr = plateauToString(partie);
+    char plateauStr[2048];
+    plateauToString(partie, plateauStr, sizeof(plateauStr));
     write_client(spectateur->sock, plateauStr);
     
     write_client(spectateur->sock, "\nTapez '/menu' pour quitter le mode spectateur\n\n");

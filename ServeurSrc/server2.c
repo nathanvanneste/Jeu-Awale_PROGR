@@ -7,41 +7,10 @@
 #include "server2.h"
 #include "client2.h"
 
+#include "io.h"
 
-// === COMMANDES ===
-
-// Fonctions utiles pour la commande menu
-void write_message_menu(SOCKET sock) {
-   char buffer[128];
-   snprintf(buffer, sizeof(buffer), "Pour info : tapez '%s' pour retourner au menu principal\n", CMD_MENU);
-   write_client(sock, buffer);
-}
-
-int strcmp_menu(const char * str) {
-   return strcasecmp(str, CMD_MENU);
-}
-
-// Fonctions utiles pour la commande message
-void write_message_message(SOCKET sock) {
-   char buffer[128];
-   snprintf(buffer, sizeof(buffer), "Pour info : tapez '%s' pour retourner au menu principal\n", CMD_MESSAGE);
-   write_client(sock, buffer);
-}
-
-int strcmp_message(const char * str) {
-   return strcasecmp(str, CMD_MESSAGE);
-}
-
-// Fonctions utiles pour la commande retour
-void write_message_back(SOCKET sock) {
-   char buffer[128];
-   snprintf(buffer, sizeof(buffer), "Pour info : tapez '%s' pour retourner au menu principal\n", CMD_BACK);
-   write_client(sock, buffer);
-}
-
-int strcmp_back(const char * str) {
-   return strcasecmp(str, CMD_BACK);
-}
+#include "historique.h"
+#include "amis.h"
 
 Client *find_client_by_name(Client *clients, int nbClients, const char *name) {
     for (int i = 0; i < nbClients; i++) {
@@ -94,7 +63,7 @@ void app(void) {
    int max = sock;
    fd_set rdfs;
 
-   // Allocation dynamique pour éviter stack overflow (Client est très gros ~170Ko)
+   // Allocation dynamique pour éviter stack overflow (Client est très gros)
    Client *clients = calloc(MAX_CLIENTS, sizeof(Client));
    if (!clients) {
       perror("Erreur allocation mémoire clients");
@@ -270,35 +239,6 @@ void clear_clients(Client *clients, int actual)
    }
 }
 
-void remove_client(Client *clients, int to_remove, int *actual)
-{
-   /* we remove the client in the array */
-   memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
-   /* number client - 1 */
-   (*actual)--;
-}
-
-void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
-{
-   int i = 0;
-   char message[BUF_SIZE];
-   message[0] = 0;
-   for(i = 0; i < actual; i++)
-   {
-      /* we don't send message to the sender */
-      if(sender.sock != clients[i].sock)
-      {
-         if(from_server == 0)
-         {
-            strncpy(message, sender.name, BUF_SIZE - 1);
-            strncat(message, " : ", sizeof message - strlen(message) - 1);
-         }
-         strncat(message, buffer, sizeof message - strlen(message) - 1);
-         write_client(clients[i].sock, message);
-      }
-   }
-}
-
 int init_connection(void)
 {
    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -334,34 +274,6 @@ void end_connection(int sock)
    closesocket(sock);
 }
 
-int read_client(SOCKET sock, char *buffer)
-{
-   int n = 0;
-
-   if((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0)
-   {
-      perror("recv()");
-      /* if recv error we disconnect the client */
-      n = -1;
-   }
-
-   buffer[n >= 0 ? n : 0] = 0;
-
-   return n;
-}
-
-/**
- * On envoie buffer sur la socket. Par convention, on a donné -1 comme valeurs pour une socket "fermée"
- */
-void write_client(SOCKET sock, const char *buffer)
-{
-   if (sock != - 1) {
-      if(send(sock, buffer, strlen(buffer), 0) < 0) {
-         perror("send()");
-         exit(errno);
-      }
-   }
-}
 
 void send_menu_to_client(Client * c)
 {
@@ -394,25 +306,24 @@ void send_all_players_to_client(Client * c, int nbClient, Client clients[])
       }
    }
 
-   char *chaine = calloc(taille_totale, sizeof(char));
-   char *p = chaine;
-
-   for (int i = 0; i < nbClient; i++) {
-      if (c->connecte && strcmp(c->name, clients[i].name) != 0) {
-         p += sprintf(p, "%s%s", clients[i].name, i < nbClient - 1 ? "\n" : "\0");
-      }
-   }
-
-   if (p == chaine) {
+   if (taille_totale == 0) {
       write_client(c->sock, "Il n'y a aucun autre joueur connecté ! Retour au menu. \n");
       send_menu_to_client(c);
    } else {
+      char chaine[taille_totale];
+      char *p = chaine;
+
+      for (int i = 0; i < nbClient; i++) {
+         if (c->connecte && strcmp(c->name, clients[i].name) != 0) {
+            p += sprintf(p, "%s%s", clients[i].name, i < nbClient - 1 ? "\n" : "\0");
+         }
+      }
+
       write_client(c->sock, "Voici tous les joueurs connectés, rentrez un pseudo pour plus de détail :\n");
       write_message_menu(c->sock);
       write_client(c->sock, chaine);
       c->etat_courant = ETAT_CHOOSE_PLAYER;
    }
-   free(chaine);
 }
 
 void send_all_parties_to_client(Client *c) {
@@ -509,34 +420,10 @@ void send_all_defis_to_client(Client * c)
    free(chaine);
 }
 
-void add_client(TabDynamiqueClient * tab, Client c) {
-    if (tab->size == tab->length) {
-        // Alors il faut augmenter la taille.
-        Client * nouvTab = calloc(tab->size * 2 + 1, sizeof(Client));
-        for (int i = 0 ; i < tab->length ; ++i) {
-            nouvTab[i] = tab->tab[i];
-        }
-
-        tab->size = tab->size * 2 + 1;
-        free(tab->tab);
-        tab->tab = nouvTab;
-    }
-
-    tab->tab[tab->length] = c;
-    ++tab->length;
-}
-
-Client * get_client(TabDynamiqueClient * tab, int index) {
-   if (index >= tab->length) {
-      return NULL;
-   }
-
-   return &tab->tab[index];
-}
-
 void notifier_joueur_tour(Partie *p) {
     Client *joueur = (p->indiceJoueurActuel == 1) ? p->joueur1 : p->joueur2;
-    char *plateau = plateauToString(p);
+    char plateau[BUF_SIZE * 2];
+    plateauToString(p, plateau, sizeof(plateau));
     char msg[BUF_SIZE * 2];
     snprintf(msg, sizeof(msg),
         "\nC'est à vous de jouer !\n%s\nChoisissez une case à jouer :\n",
@@ -607,7 +494,8 @@ void do_partie_en_cours(Client *c, char *input) {
     char notif[BUF_SIZE * 2];
     Client *adv = (numJoueur == 1) ? p->joueur2 : p->joueur1;
     
-    char *plateau = plateauToString(p);
+    char plateau[BUF_SIZE * 2];
+    plateauToString(p, plateau, sizeof(plateau));
     snprintf(notif, sizeof(notif),
         "%s a joué la case %d.\n%s",
         c->name, caseChoisie, plateau);
@@ -1037,7 +925,9 @@ void afficher_infos_partie(Client * c, Partie * p) {
    char msg[BUF_SIZE * 2];
    Client *adv = (p->joueur1 == c) ? p->joueur2 : p->joueur1;
    
-   char *plateau = plateauToString(p);
+   char plateau[1024];
+   plateauToString(p, plateau, sizeof(plateau));
+
    snprintf(msg, sizeof(msg),
       "Vous jouez contre %s.\n\n%s",
       adv->name, plateau);

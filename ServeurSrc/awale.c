@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include "awale.h"
+#include "historique.h"
 
 void init_partie(Client * joueur1, Client * joueur2, Partie * p) 
 {
@@ -280,14 +281,13 @@ void afficherPlateau(const Partie *p)
 /**
  * Créé un string contenant toutes les infos du plateau
  */
-char *plateauToString(const Partie *p) {
-    if (!p || !p->plateau) return "(partie invalide)";
+void plateauToString(const Partie *p, char * buffer, int taillePlateau) {
+    if (!p || !p->plateau) return;
 
-    static char buffer[1024];
     int offset = 0;
 
     // Ligne d’en-tête : indices du joueur 2 (cases 11 → 6)
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+    offset += snprintf(buffer + offset, taillePlateau - offset,
         "\n==================== PLATEAU D'AWALE ====================\n"
         "              Camp du joueur 2 : %s\n"
         "----------------------------------------------------------\n"
@@ -296,28 +296,28 @@ char *plateauToString(const Partie *p) {
         p->joueur2 ? p->joueur2->name : "Inconnu");
 
     for (int i = 11; i >= 6; --i) {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[%2d] ", p->plateau[i]);
+        offset += snprintf(buffer + offset, taillePlateau - offset, "[%2d] ", p->plateau[i]);
     }
 
     // Ligne séparatrice
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+    offset += snprintf(buffer + offset, taillePlateau - offset,
         "\n----------------------------------------------------------\n");
 
     // Camp du joueur 1
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+    offset += snprintf(buffer + offset, taillePlateau - offset,
         "   Graines : ");
     for (int i = 0; i < 6; ++i) {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "[%2d] ", p->plateau[i]);
+        offset += snprintf(buffer + offset, taillePlateau - offset, "[%2d] ", p->plateau[i]);
     }
 
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+    offset += snprintf(buffer + offset, taillePlateau - offset,
         "\n   Indices : [ 0] [ 1] [ 2] [ 3] [ 4] [ 5]\n"
         "----------------------------------------------------------\n"
         "              Camp du joueur 1 : %s\n\n",
         p->joueur1 ? p->joueur1->name : "Inconnu");
 
     // Scores et joueur actuel
-    offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+    offset += snprintf(buffer + offset, taillePlateau - offset,
         "Scores : %s = %d graines | %s = %d graines\n",
         p->joueur1 ? p->joueur1->name : "J1", p->cptJoueur1,
         p->joueur2 ? p->joueur2->name : "J2", p->cptJoueur2);
@@ -328,14 +328,13 @@ char *plateauToString(const Partie *p) {
         "Inconnu";
 
     if (!p->partieEnCours) {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        offset += snprintf(buffer + offset, taillePlateau - offset,
             "La partie est terminée !\n"
             "==========================================================\n");
     } else {
-        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+        offset += snprintf(buffer + offset, taillePlateau - offset,
             "→ C’est au tour de : %s\n"
             "==========================================================\n",
             joueurActuel);    
     }
-    return buffer;
 }

@@ -27,13 +27,7 @@ typedef struct in_addr IN_ADDR;
 #define PORT         1977
 #define MAX_CLIENTS     100
 
-#define BUF_SIZE    1024
-
-#define CMD_MESSAGE "/message"
-#define CMD_BACK "/retour"
-#define CMD_MENU "/menu"
-
-#include "client2.h"
+#include "type.h"
 
 void do_view_historique(Client *c, char *choice);
 void do_detail_partie_historique(Client *c, char *choice);
@@ -47,10 +41,7 @@ void end(void);
 void app(void);
 int init_connection(void);
 void end_connection(int sock);
-int read_client(SOCKET sock, char *buffer);
-void write_client(SOCKET sock, const char *buffer);
-void send_message_to_all_clients(Client *clients, Client client, int actual, const char *buffer, char from_server);
-void remove_client(Client *clients, int to_remove, int *actual);
+
 void clear_clients(Client *clients, int actual);
 
 void send_menu_to_client(Client * c);
@@ -67,21 +58,10 @@ void do_answer_defi(Client *c, char *choice);
 void do_send_message(Client *c, char *choice);
 
 
-char *plateauToString(const Partie *p);
 
 void notifier_fin_partie(Partie *p);
+void notifier_joueur_tour(Partie *p);
 void afficher_infos_partie(Client * c, Partie * p);
 void do_choose_partie(Client *c, char *choice);
-
-typedef struct
-{
-    int size;
-    int length;
-    Client * tab;
-}TabDynamiqueClient;
-
-void add_client(TabDynamiqueClient * tab, Client c);
-
-Client * get_client(TabDynamiqueClient * tab, int index);
 
 #endif /* guard */

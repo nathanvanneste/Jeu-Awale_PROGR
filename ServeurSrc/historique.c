@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "awale.h"
-#include "server2.h"
 
-#define CAPACITE_INITIALE 50
+#include "historique.h"
+#include "io.h"
+
 
 // ========== FONCTION 1 : Enregistrer un coup ==========
 void enregistrer_coup(Partie *p, int numJoueur, int caseJouee, int grainesCapturees) {
