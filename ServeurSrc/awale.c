@@ -1,10 +1,11 @@
+#include "awale.h"
+
+#include "historique.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#include "awale.h"
-#include "historique.h"
 
 void init_partie(Client * joueur1, Client * joueur2, Partie * p) 
 {

@@ -1,11 +1,13 @@
+#include "amis.h"
+
+#include "io.h"
+#include "awale.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
-#include "amis.h"
-#include "io.h"
-#include "awale.h"
 
 // ========== FONCTION 1 : Envoyer une demande d'ami ==========
 void envoyer_demande_ami(Client *demandeur, Client *destinataire) {

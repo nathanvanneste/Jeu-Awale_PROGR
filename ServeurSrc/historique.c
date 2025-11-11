@@ -1,11 +1,11 @@
+#include "historique.h"
+
+#include "io.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#include "historique.h"
-#include "io.h"
-
 
 // ========== FONCTION 1 : Enregistrer un coup ==========
 void enregistrer_coup(Partie *p, int numJoueur, int caseJouee, int grainesCapturees) {
