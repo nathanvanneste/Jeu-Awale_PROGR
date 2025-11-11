@@ -252,7 +252,7 @@ bool rejoindre_comme_spectateur(Client *spectateur, Partie *partie) {
     }
     
     // Vérifier la capacité
-    if (partie->nbSpectateurs >= 20) {
+    if (partie->nbSpectateurs > 32) {
         write_client(spectateur->sock, "La partie a atteint le nombre maximum de spectateurs.\n");
         return false;
     }

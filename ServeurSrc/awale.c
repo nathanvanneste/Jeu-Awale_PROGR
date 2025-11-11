@@ -27,9 +27,7 @@ void init_partie(Client * joueur1, Client * joueur2, Partie * p)
     p->cptJoueur1 = 0;
     p->cptJoueur2 = 0;
 
-    p->plateau = calloc(12, sizeof(int));
-
-    for (int i = 0; i < 12 ; ++i) {
+    for (int i = 0; i < NB_CASE_PLATEAU ; ++i) {
         p->plateau[i] = 4;
     }
 
@@ -37,6 +35,9 @@ void init_partie(Client * joueur1, Client * joueur2, Partie * p)
     p->historiqueCoups = NULL;
     p->nbCoupsJoues = 0;
     p->capaciteHistorique = 0;
+
+    // Init spec
+    p->nbSpectateurs = 0;
 }
 
 void destroyPartie(Partie * p)

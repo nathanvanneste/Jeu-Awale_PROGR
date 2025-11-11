@@ -58,11 +58,13 @@ typedef struct {
     time_t timestamp;       // horodatage du coup
 } CoupHistorique;
 
+#define NB_SPECTATEUR_MAX 32
+#define NB_CASE_PLATEAU 12
 typedef struct Partie
 {
    struct Client * joueur1;
    struct Client * joueur2;
-   int * plateau;
+   int plateau[NB_CASE_PLATEAU];
    int cptJoueur1;
    int cptJoueur2;
    int indiceJoueurActuel;
@@ -71,7 +73,7 @@ typedef struct Partie
    char ** observers;
    
    // Spectateurs
-   struct Client *spectateurs[20];  // max 20 spectateurs par partie
+   struct Client *spectateurs[NB_SPECTATEUR_MAX];  // max 20 spectateurs par partie
    int nbSpectateurs;
    
    // Historique
