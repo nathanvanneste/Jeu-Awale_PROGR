@@ -126,6 +126,7 @@ void afficher_historique_parties(Client *c) {
     if (c->nbPartiesHistorique == 0) {
         snprintf(buffer, sizeof(buffer), "Vous n'avez aucune partie dans votre historique.\n");
         write_client(c->sock, buffer);
+        write_message_menu(c->sock);
         return;
     }
     

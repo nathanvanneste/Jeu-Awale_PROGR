@@ -44,9 +44,7 @@ void init_partie(Client * joueur1, Client * joueur2, Partie * p)
 }
 
 void destroyPartie(Partie * p)
-{
-    free(p->plateau);
-    
+{   
     // Libérer l'historique
     if (p->historiqueCoups) {
         free(p->historiqueCoups);
