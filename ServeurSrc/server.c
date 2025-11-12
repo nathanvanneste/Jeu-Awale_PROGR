@@ -880,7 +880,7 @@ void do_partie_en_cours(Client *c, char *input) {
     }
 
     // Notifie les deux joueurs
-    char notif[BUF_SIZE * 2];
+    char notif[BUF_SIZE * 3];
     Client *adv = (numJoueur == 1) ? p->joueur2 : p->joueur1;
     
     char plateau[BUF_SIZE * 2];
@@ -909,25 +909,31 @@ void do_partie_en_cours(Client *c, char *input) {
  * Envoie de tous ses messages reçus au client passé en paramètre
  */
 void send_all_messages_to_client(Client *c) {
-    if (c->nbMessages == 0) {
-        write_client(c->sock, "Aucun message reçu.\n");
-        send_menu_to_client(c);
-        return;
-    }
+   if (c->nbMessages == 0) {
+      write_client(c->sock, "Aucun message reçu.\n");
+      send_menu_to_client(c);
+      return;
+   }
 
-    char buffer[BUF_SIZE * 4] = "== Vos messages ==\n";
-    for (int i = 0; i < c->nbMessages; ++i) {
-        Message m = c->messages[i];
-        char ligne[BUF_SIZE];
-        snprintf(ligne, sizeof(ligne), "De %s : %s\n", m.expediteur->name, m.contenu);
-        strcat(buffer, ligne);
-    }
+   // Message d’en-tête
+   const char *header = "== Vos messages ==\n";
+   write_client(c->sock, header);
 
-    write_client(c->sock, buffer);
-    write_message_menu(c->sock);
-    c->etat_courant = ETAT_READ_MESSAGES;
+   if (c->nbMessages == 0) {
+      write_client(c->sock, "Vous n'avez aucun message !\n");
+   } else {
+      // buffer suffisamment grand pour tout stocker
+      char ligne[BUF_SIZE + STR_SIZE * 2];
 
-    // TODO : que faire ensuite ? Proposer la possibilité de répondre ? Supprimer un message ? Retour au menu ?
+      for (int i = 0; i < c->nbMessages; ++i) {
+         Message m = c->messages[i];
+         snprintf(ligne, sizeof(ligne), "De %s : %s\n", m.expediteur->name, m.contenu);
+         write_client(c->sock, ligne);
+      }
+   }
+
+   write_message_menu(c->sock);
+   c->etat_courant = ETAT_READ_MESSAGES;
 }
 
 /**
