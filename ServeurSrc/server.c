@@ -150,7 +150,7 @@ void app(void) {
             Client c;
             memset(&c, 0, sizeof(Client));
             c.sock = csock;
-            strncpy(c.name, buffer, BUF_SIZE - 1);
+            strncpy(c.name, buffer, STR_SIZE - 1);
             c.etat_courant = ETAT_INIT;
             c.indiceDefis = 0;
             c.indiceParties = 0;
@@ -385,7 +385,7 @@ void do_menu(Client * c, char * choice, int nbClient, Client clients[]) {
       case 8:
          // Définir sa biographie
          c->etat_courant = ETAT_EDIT_BIO;
-         write_client(c->sock, "Entrez votre biographie (max 1000 caractères) :\n");
+         write_client(c->sock, "Entrez votre biographie (max 500 caractères) :\n");
          break;
       case 9:
          deconnecter_client(c);
@@ -1141,8 +1141,8 @@ void do_edit_bio(Client *c, char *choice) {
    }
    
    // Limiter la taille de la bio
-   if (strlen(choice) > BUF_SIZE) {
-      write_client(c->sock, "Biographie trop longue (max 1000 caractères). Réessayez :\n");
+   if (strlen(choice) > BIO_SIZE) {
+      write_client(c->sock, "Biographie trop longue (max 500 caractères). Réessayez :\n");
       return;
    }
    

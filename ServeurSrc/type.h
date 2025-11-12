@@ -26,6 +26,8 @@ typedef struct in_addr IN_ADDR;
 #include <stdbool.h>
 
 #define BUF_SIZE 1024
+#define STR_SIZE 256
+#define BIO_SIZE 512
 
 typedef enum {
    ETAT_INIT,      // vaut 0
@@ -118,7 +120,7 @@ typedef struct Client
 {
    SOCKET sock;
    struct Client * lookedPlayer;
-   char name[BUF_SIZE];
+   char name[STR_SIZE];
    Etat etat_courant;
    Partie * parties[NB_MAX_PARTIE];
    int indiceParties;
@@ -143,7 +145,7 @@ typedef struct Client
    Partie *partieSpectatee;          // partie que le client regarde en spectateur (NULL si pas spectateur)
 
    // Biographie
-   char bio[BUF_SIZE];                    // biographie du joueur
+   char bio[BIO_SIZE];                    // biographie du joueur
 
    bool connecte;
 }Client;
