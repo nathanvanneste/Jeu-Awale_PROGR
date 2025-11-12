@@ -22,6 +22,8 @@ Une fois connecté au serveur, un menu s'affiche détaillant les possibilités :
 - 5 : Consulter son historique des parties terminées
 - 6 : Voir ses amis
 - 7 : Voir les demandes d'ami reçues
+- 8 : Définir sa biographie
+- 9 : Quitter
 
 ### 1 : Consulter la liste des joueurs
 
@@ -29,6 +31,7 @@ Vous pourrez voir tous les joueurs actuellement connectés au serveur et en choi
 - Envoyer un défi
 - Envoyer un message
 - Envoyer une demande d'ami
+- Consulter sa bio
 
 ### 2 : Consulter les défis reçus
 
@@ -60,6 +63,10 @@ Si parmi ceux connectés quelqu'un joue actuellement une partie, il est possible
 ### 7 : Voir les demandes d'ami reçues
 
 Affiche toutes les demandes d'ami reçues. Il est possible de les accepter ou refuser ou bien de ne rien faire et de retourner au menu.
+
+### 8 : Définir sa biographie
+
+Un joueur peut ici définir sa biographie d'une taille de 500 caractères. Les autres joueurs peuvent la consulter via la liste des joueurs.
 
 ### Gestion de la déconnexion
 
