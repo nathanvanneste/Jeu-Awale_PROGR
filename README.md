@@ -54,6 +54,8 @@ Lorsqu'un message est reçu, une notification contenant l'expéditeur et le corp
 
 ### 5 : Consulter son historique des parties terminées
 
+Lorsqu'un joueur a terminé une partie, il peut consulter les coups qui ont été joués et par qui. Il peut également voir combien de graines ont été capturées à chaque tour.
+
 ### 6 : Voir ses amis
 
 Affiche tous les amis du client, ceux connectés comme ceux déconnectés.
