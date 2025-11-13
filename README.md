@@ -1,5 +1,7 @@
 # Jeu-Awale_PROGR
 
+HEQUET Erwann, VANNESTE Nathan 4IF Gr.3
+
 # Bienvenue sur notre jeu d'Awale
 
 ## Lancer le jeu
